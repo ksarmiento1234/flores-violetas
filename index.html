@@ -134,7 +134,7 @@
 
     <div class="loading-state" id="loading">Cargando roles…</div>
 
-    <div class="view active hidden" id="view-entreesemana"></div>
+    <div class="view active hidden" id="view-entresemana"></div>
     <div class="view hidden" id="view-findesemana"></div>
     <div class="view hidden" id="view-predicacion"></div>
   </div>
@@ -147,7 +147,7 @@
 
     const tabs = Array.from(document.querySelectorAll('.meeting-tab'));
     const views = {
-      entresemana: document.getElementById('view-entreesemana'),
+      entresemana: document.getElementById('view-entresemana'),
       findesemana: document.getElementById('view-findesemana'),
       predicacion: document.getElementById('view-predicacion')
     };
@@ -179,7 +179,7 @@
       if (!API_URL || API_URL.includes('PEGA_AQUI')) {
         showLoading(false);
         setStatus('Falta configurar la URL del API en index.html');
-        views.entreesemana.innerHTML = `<div class="empty-state">Edita <strong>index.html</strong> y pega tu URL <strong>/exec</strong> en la constante <strong>API_URL</strong>.</div>`;
+        views.entresemana.innerHTML = `<div class="empty-state">Edita <strong>index.html</strong> y pega tu URL <strong>/exec</strong> en la constante <strong>API_URL</strong>.</div>`;
         activate('entresemana');
         return;
       }
@@ -200,7 +200,7 @@
         cleanup();
         showLoading(false);
         setStatus('No se pudo cargar el API. Revisa la URL o la implementación.');
-        views.entreesemana.innerHTML = '<div class="empty-state">No se pudo cargar la información desde Apps Script.</div>';
+        views.entresemana.innerHTML = '<div class="empty-state">No se pudo cargar la información desde Apps Script.</div>';
         activate('entresemana');
       }, 12000);
 
@@ -225,7 +225,7 @@
         cleanup();
         showLoading(false);
         setStatus('Error al cargar el API.');
-        views.entreesemana.innerHTML = '<div class="empty-state">Error al cargar el API de Apps Script.</div>';
+        views.entresemana.innerHTML = '<div class="empty-state">Error al cargar el API de Apps Script.</div>';
         activate('entresemana');
       };
 
@@ -233,7 +233,7 @@
     }
 
     function renderAll(data) {
-      views.entreesemana.innerHTML = renderMidweek(data.entreesemana || { hasData:false });
+      views.entresemana.innerHTML = renderMidweek(data.entresemana || { hasData:false });
       views.findesemana.innerHTML = renderWeekend(data.findesemana || { hasData:false });
       views.predicacion.innerHTML = renderPreaching(data.predicacion || { hasData:false });
     }
