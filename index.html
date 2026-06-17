@@ -139,221 +139,278 @@
     <div class="view hidden" id="view-predicacion"></div>
   </div>
 
-  <script>
-    // 1) Pega aquí la URL /exec de tu Apps Script API
-    const API_URL = 'https://script.google.com/macros/s/AKfycbxCzMZ59Y4rEC8mR0_eqA3_yxDT1OXRC33CqsIUFgBqu92oDBkV-5V7rzD614NSa7cIhw/exec';
+<script>
+  const API_URL = 'https://script.google.com/macros/s/AKfycbw9Mx8X2xy1Zw4-31Ba79U_-idZs2N2QpEGrRIbrd2z3cLoWA_TgB0HeabU7ZmnNBtUpQ/exec';
 
-    let payload = null;
+  const tabs = Array.from(document.querySelectorAll('.meeting-tab'));
+  const views = {
+    entresemana: document.getElementById('view-entresemana'),
+    findesemana: document.getElementById('view-findesemana'),
+    predicacion: document.getElementById('view-predicacion')
+  };
 
-    const tabs = Array.from(document.querySelectorAll('.meeting-tab'));
-    const views = {
-      entresemana: document.getElementById('view-entresemana'),
-      findesemana: document.getElementById('view-findesemana'),
-      predicacion: document.getElementById('view-predicacion')
-    };
+  function activate(viewName) {
+    const valid = views[viewName] ? viewName : 'entresemana';
+    tabs.forEach(tab => tab.classList.toggle('active', tab.dataset.view === valid));
+    Object.keys(views).forEach(key => views[key].classList.toggle('active', key === valid));
+    if (location.hash !== '#' + valid) history.replaceState(null, '', '#' + valid);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
 
-    function activate(viewName) {
-      const valid = views[viewName] ? viewName : 'entresemana';
-      tabs.forEach(tab => tab.classList.toggle('active', tab.dataset.view === valid));
-      Object.keys(views).forEach(key => views[key].classList.toggle('active', key === valid));
-      if (location.hash !== '#' + valid) {
-        history.replaceState(null, '', '#' + valid);
-      }
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+  tabs.forEach(tab => tab.addEventListener('click', () => activate(tab.dataset.view)));
+  document.getElementById('reloadBtn').addEventListener('click', () => loadData(true));
+
+  function setStatus(text) {
+    document.getElementById('status').textContent = text;
+  }
+
+  function showLoading(isLoading) {
+    document.getElementById('loading').classList.toggle('hidden', !isLoading);
+    Object.values(views).forEach(el => el.classList.toggle('hidden', isLoading));
+  }
+
+  function esc(v) {
+    return String(v ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function showApiError(message, detail = '') {
+    showLoading(false);
+    setStatus(message);
+    views.entresemana.innerHTML =
+      `<div class="error-state"><strong>${esc(message)}</strong>${detail ? `<small>${esc(detail)}</small>` : ''}</div>`;
+    activate('entresemana');
+  }
+
+  function loadData(forceBust = false) {
+    if (!API_URL) {
+      showApiError('Falta configurar la URL del API.');
+      return;
     }
 
-    tabs.forEach(tab => tab.addEventListener('click', () => activate(tab.dataset.view)));
+    showLoading(true);
+    setStatus('Consultando Google Sheets…');
 
-    document.getElementById('reloadBtn').addEventListener('click', () => loadData(true));
+    const callbackName = '__rolesPrefix_' + Date.now();
+    const separator = API_URL.includes('?') ? '&' : '?';
+    const bust = forceBust ? '&_ts=' + Date.now() : '';
+    const src = `${API_URL}${separator}prefix=${callbackName}${bust}`;
 
-    function setStatus(text) {
-      document.getElementById('status').textContent = text;
+    const script = document.createElement('script');
+    script.src = src;
+    script.async = true;
+
+    const timeout = setTimeout(() => {
+      cleanup();
+      showApiError(
+        'No se pudo cargar el API.',
+        'Se agotó el tiempo de espera. Normalmente esto pasa cuando Apps Script no devuelve el JSONP ejecutando el prefix.'
+      );
+    }, 15000);
+
+    function cleanup() {
+      clearTimeout(timeout);
+      delete window[callbackName];
+      if (script.parentNode) script.parentNode.removeChild(script);
     }
 
-    function showLoading(isLoading) {
-      document.getElementById('loading').classList.toggle('hidden', !isLoading);
-      Object.values(views).forEach(el => el.classList.toggle('hidden', isLoading));
-    }
+    window[callbackName] = function(data) {
+      cleanup();
 
-    function loadData(forceBust = false) {
-      if (!API_URL || API_URL.includes('PEGA_AQUI')) {
-        showLoading(false);
-        setStatus('Falta configurar la URL del API en index.html');
-        views.entresemana.innerHTML = `<div class="empty-state">Edita <strong>index.html</strong> y pega tu URL <strong>/exec</strong> en la constante <strong>API_URL</strong>.</div>`;
-        activate('entresemana');
+      if (!data || data.ok !== true) {
+        showApiError('El API respondió con datos inválidos.', JSON.stringify(data || {}));
         return;
       }
 
-      showLoading(true);
-      setStatus('Consultando Google Sheets…');
+      renderAll(data);
 
-      const callbackName = '__rolesCallback_' + Date.now();
-      const separator = API_URL.includes('?') ? '&' : '?';
-      const bust = forceBust ? '&_ts=' + Date.now() : '';
-      const src = `${API_URL}${separator}callback=${callbackName}${bust}`;
+      const generated = data.generatedAt
+        ? new Date(data.generatedAt).toLocaleString('es-PE')
+        : 'actualizado';
 
-      const script = document.createElement('script');
-      script.src = src;
-      script.async = true;
+      setStatus(`Datos cargados · ${generated}`);
+      showLoading(false);
 
-      const timeout = setTimeout(() => {
-        cleanup();
-        showLoading(false);
-        setStatus('No se pudo cargar el API. Revisa la URL o la implementación.');
-        views.entresemana.innerHTML = '<div class="empty-state">No se pudo cargar la información desde Apps Script.</div>';
-        activate('entresemana');
-      }, 12000);
+      const requested = (location.hash || '').replace('#', '').trim().toLowerCase();
+      activate(requested || 'entresemana');
+    };
 
-      function cleanup() {
-        clearTimeout(timeout);
-        delete window[callbackName];
-        if (script.parentNode) script.parentNode.removeChild(script);
-      }
+    script.onerror = function() {
+      cleanup();
+      showApiError(
+        'Error al cargar el API.',
+        'La URL respondió con error o Apps Script devolvió una página distinta a JavaScript.'
+      );
+    };
 
-      window[callbackName] = function(data) {
-        cleanup();
-        payload = data;
-        renderAll(data);
-        const generated = data && data.generatedAt ? new Date(data.generatedAt).toLocaleString('es-PE') : 'actualizado';
-        setStatus(`Datos cargados · ${generated}`);
-        showLoading(false);
-        const requested = (location.hash || '').replace('#', '').trim().toLowerCase();
-        activate(requested || 'entresemana');
-      };
+    document.body.appendChild(script);
+  }
 
-      script.onerror = function() {
-        cleanup();
-        showLoading(false);
-        setStatus('Error al cargar el API.');
-        views.entresemana.innerHTML = '<div class="empty-state">Error al cargar el API de Apps Script.</div>';
-        activate('entresemana');
-      };
+  function renderAll(data) {
+    views.entresemana.innerHTML = renderMidweek(data.entresemana || { hasData: false });
+    views.findesemana.innerHTML = renderWeekend(data.findesemana || { hasData: false });
+    views.predicacion.innerHTML = renderPreaching(data.predicacion || { hasData: false });
+  }
 
-      document.body.appendChild(script);
-    }
-
-    function renderAll(data) {
-      views.entresemana.innerHTML = renderMidweek(data.entresemana || { hasData:false });
-      views.findesemana.innerHTML = renderWeekend(data.findesemana || { hasData:false });
-      views.predicacion.innerHTML = renderPreaching(data.predicacion || { hasData:false });
-    }
-
-    function esc(v) {
-      return String(v ?? '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
-    }
-
-    function renderItems(items, colorClass, lectorName='') {
-      return (items || []).map(item => `
-        <div class="item">
-          <div class="item-title">
-            ${item.number ? esc(item.number) + '. ' : ''}${esc(item.title || '')}
-            ${item.isCongBibleStudy && lectorName ? `<span class="lector-inline">Lector: <span class="lector-name">${esc(lectorName)}</span></span>` : ''}
-          </div>
-          ${item.names ? `<div class="item-person">${esc(item.names)}</div>` : ''}
+  function renderItems(items, lectorName = '') {
+    return (items || []).map(item => `
+      <div class="item">
+        <div class="item-title">
+          ${item.number ? esc(item.number) + '. ' : ''}${esc(item.title || '')}
+          ${item.isCongBibleStudy && lectorName
+            ? `<span class="lector-inline">Lector: <span class="lector-name">${esc(lectorName)}</span></span>`
+            : ''}
         </div>
-      `).join('');
+        ${item.names ? `<div class="item-person">${esc(item.names)}</div>` : ''}
+      </div>
+    `).join('');
+  }
+
+  function renderMidweek(d) {
+    if (!d.hasData) {
+      return '<div class="empty-state">No hay datos cargados para <strong>Reunión Entresemana</strong> en la semana actual.</div>';
     }
 
-    function renderMidweek(d) {
-      if (!d.hasData) {
-        return '<div class="empty-state">No hay datos cargados para <strong>Reunión Entresemana</strong> en la semana actual.</div>';
-      }
-      return `
-        <div class="page">
-          <div class="header">${esc(d.weekTitle)}</div>
-          ${d.president ? `<div class="president">Presidente: ${esc(d.president)}</div>` : ''}
+    return `
+      <div class="page">
+        <div class="header">${esc(d.weekTitle)}</div>
+        ${d.president ? `<div class="president">Presidente: ${esc(d.president)}</div>` : ''}
 
-          <section class="section blue">
-            <div class="section-header">
-              <div class="section-header-left">
-                <div class="icon-box"><svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><rect width="48" height="48" fill="#3c7f8f"/><path d="M11 18 L17 11 H31 L37 18 L24 35 Z" fill="none" stroke="#fff" stroke-width="2.2" stroke-linejoin="round"/><path d="M11 18 H37" fill="none" stroke="#fff" stroke-width="2"/><path d="M17 11 L24 18 L31 11" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round"/><path d="M17 11 L20 18 L24 35" fill="none" stroke="#fff" stroke-width="2"/><path d="M31 11 L28 18 L24 35" fill="none" stroke="#fff" stroke-width="2"/></svg></div>
-                <div class="section-title">TESOROS DE LA BIBLIA</div>
+        <section class="section blue">
+          <div class="section-header">
+            <div class="section-header-left">
+              <div class="icon-box">
+                <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+                  <rect width="48" height="48" fill="#3c7f8f"/>
+                  <path d="M11 18 L17 11 H31 L37 18 L24 35 Z" fill="none" stroke="#fff" stroke-width="2.2" stroke-linejoin="round"/>
+                  <path d="M11 18 H37" fill="none" stroke="#fff" stroke-width="2"/>
+                  <path d="M17 11 L24 18 L31 11" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round"/>
+                  <path d="M17 11 L20 18 L24 35" fill="none" stroke="#fff" stroke-width="2"/>
+                  <path d="M31 11 L28 18 L24 35" fill="none" stroke="#fff" stroke-width="2"/>
+                </svg>
               </div>
-              ${d.openingSong ? `<div class="song">Canción ${esc(d.openingSong)}</div>` : ''}
+              <div class="section-title">TESOROS DE LA BIBLIA</div>
             </div>
-            <div class="items">${renderItems(d.treasures || [], 'blue')}</div>
-          </section>
+            ${d.openingSong ? `<div class="song">Canción ${esc(d.openingSong)}</div>` : ''}
+          </div>
+          <div class="items">${renderItems(d.treasures || [])}</div>
+        </section>
 
-          <section class="section gold">
-            <div class="section-header">
-              <div class="section-header-left">
-                <div class="icon-box"><svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><rect width="48" height="48" fill="#a87d10"/><path d="M24 10 L24 37" fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round"/><path d="M24 14 C20 14,18 16,18 18 C22 18,24 16,24 14 Z" fill="none" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"/><path d="M24 18 C28 18,30 20,30 22 C26 22,24 20,24 18 Z" fill="none" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"/><path d="M24 22 C20 22,18 24,18 26 C22 26,24 24,24 22 Z" fill="none" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"/><path d="M24 26 C28 26,30 28,30 30 C26 30,24 28,24 26 Z" fill="none" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"/><path d="M24 30 C20 30,18 32,18 34 C22 34,24 32,24 30 Z" fill="none" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"/></svg></div>
-                <div class="section-title">SEAMOS MEJORES MAESTROS</div>
+        <section class="section gold">
+          <div class="section-header">
+            <div class="section-header-left">
+              <div class="icon-box">
+                <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+                  <rect width="48" height="48" fill="#a87d10"/>
+                  <path d="M24 10 L24 37" fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round"/>
+                  <path d="M24 14 C20 14,18 16,18 18 C22 18,24 16,24 14 Z" fill="none" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"/>
+                  <path d="M24 18 C28 18,30 20,30 22 C26 22,24 20,24 18 Z" fill="none" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"/>
+                  <path d="M24 22 C20 22,18 24,18 26 C22 26,24 24,24 22 Z" fill="none" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"/>
+                  <path d="M24 26 C28 26,30 28,30 30 C26 30,24 28,24 26 Z" fill="none" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"/>
+                  <path d="M24 30 C20 30,18 32,18 34 C22 34,24 32,24 30 Z" fill="none" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"/>
+                </svg>
               </div>
-            </div>
-            <div class="items">${renderItems(d.teachers || [], 'gold')}</div>
-          </section>
-
-          <section class="section red">
-            <div class="section-header">
-              <div class="section-header-left">
-                <div class="icon-box"><svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><rect width="48" height="48" fill="#a51f27"/><path d="M12 29 C12 23,16 20,21 20 H29 C34 20,37 23,37 28 V31 H34 V35 H31 V31 H18 V35 H15 V31 H12 Z" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round"/><circle cx="34.5" cy="17.5" r="3" fill="none" stroke="#fff" stroke-width="2"/><path d="M26 20 L31 17" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"/><path d="M15 20 L18 16 L19 20" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round"/><path d="M22 17 L24 14 L26 17" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round"/></svg></div>
-                <div class="section-title">NUESTRA VIDA CRISTIANA</div>
-              </div>
-              ${d.middleSong ? `<div class="song">Canción ${esc(d.middleSong)}</div>` : ''}
-            </div>
-            <div class="items">${renderItems(d.life || [], 'red', d.lector || '')}</div>
-          </section>
-
-          ${d.closingSong ? `<div class="footer-note">Palabras de conclusión y canción ${esc(d.closingSong)}</div>` : ''}
-          ${d.prayerName ? `<div class="footer-prayer">Oración conclusión&nbsp;&nbsp;${esc(d.prayerName)}</div>` : ''}
-          ${d.cleaningLabel ? `<div class="cleaning">${esc(d.cleaningLabel)}</div>` : ''}
-        </div>`;
-    }
-
-    function renderWeekend(d) {
-      if (!d.hasData) {
-        return '<div class="empty-state">No hay datos cargados para <strong>Reunión Fin de Semana</strong> en la semana actual.</div>';
-      }
-      return `
-        <div class="weekend-wrap">
-          <div class="weekend-card">
-            <div class="weekend-top">${esc(d.headerTitle || '')}</div>
-            <div class="weekend-body">
-              ${d.president ? `<div class="weekend-president">PRESIDENTE: <span class="name">${esc(d.president)}</span></div>` : ''}
-
-              ${d.publicTalk ? `
-                <div class="wk-section-header wk-green">
-                  <div class="wk-left">
-                    <div class="wk-icon"><svg viewBox="0 0 52 28" xmlns="http://www.w3.org/2000/svg"><rect width="52" height="28" fill="#0b6e63"/><path d="M6 18 C10 15,14 15,18 17 C21 13,31 13,34 17 C38 15,42 15,46 18 L46 19 C42 18,38 18,34 20 C31 16,21 16,18 20 C14 18,10 18,6 19 Z" fill="none" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"/><path d="M24 9 L28 9" stroke="#fff" stroke-width="1.7" stroke-linecap="round"/></svg></div>
-                    <div class="wk-title">DISCURSO PÚBLICO</div>
-                  </div>
-                  ${d.publicTalk.song ? `<div class="wk-song">Canción ${esc(d.publicTalk.song)}</div>` : ''}
-                </div>
-                <div class="wk-talk-title">“${esc(d.publicTalk.title || '')}”</div>
-                ${d.publicTalk.speaker ? `<div class="wk-speaker">${esc(d.publicTalk.speaker)}</div>` : ''}
-                ${d.publicTalk.subtitle ? `<div class="wk-subtitle">${esc(d.publicTalk.subtitle)}</div>` : ''}
-              ` : ''}
-
-              ${d.watchtower ? `
-                <div class="wk-section-header wk-red" style="margin-top:12px;">
-                  <div class="wk-left">
-                    <div class="wk-icon"><svg viewBox="0 0 52 28" xmlns="http://www.w3.org/2000/svg"><rect width="52" height="28" fill="#a51f27"/><path d="M12 21 V10 L16 8 V21" fill="none" stroke="#fff" stroke-width="1.7" stroke-linejoin="round"/><path d="M16 8 H23 L23 10" fill="none" stroke="#fff" stroke-width="1.7" stroke-linejoin="round"/><path d="M21 10 H28 V13" fill="none" stroke="#fff" stroke-width="1.7" stroke-linejoin="round"/><path d="M26 13 H33 V17" fill="none" stroke="#fff" stroke-width="1.7" stroke-linejoin="round"/></svg></div>
-                    <div class="wk-title">REUNIÓN LA ATALAYA</div>
-                  </div>
-                  ${d.watchtower.song ? `<div class="wk-song">Canción ${esc(d.watchtower.song)}</div>` : ''}
-                </div>
-                <div class="wk-watchtower-title">“${esc(d.watchtower.title || '')}”</div>
-                ${d.watchtower.conductor ? `<div class="wk-watchtower-conductor">${esc(d.watchtower.conductor)}</div>` : ''}
-              ` : ''}
-
-              ${d.closingSong ? `<div class="wk-bottom-song">Canción ${esc(d.closingSong)}</div>` : ''}
-              ${d.cleaningLabel ? `<div class="wk-cleaning">${esc(d.cleaningLabel)}</div>` : ''}
+              <div class="section-title">SEAMOS MEJORES MAESTROS</div>
             </div>
           </div>
-        </div>`;
+          <div class="items">${renderItems(d.teachers || [])}</div>
+        </section>
+
+        <section class="section red">
+          <div class="section-header">
+            <div class="section-header-left">
+              <div class="icon-box">
+                <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+                  <rect width="48" height="48" fill="#a51f27"/>
+                  <path d="M12 29 C12 23,16 20,21 20 H29 C34 20,37 23,37 28 V31 H34 V35 H31 V31 H18 V35 H15 V31 H12 Z" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round"/>
+                  <circle cx="34.5" cy="17.5" r="3" fill="none" stroke="#fff" stroke-width="2"/>
+                  <path d="M26 20 L31 17" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+                  <path d="M15 20 L18 16 L19 20" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round"/>
+                  <path d="M22 17 L24 14 L26 17" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round"/>
+                </svg>
+              </div>
+              <div class="section-title">NUESTRA VIDA CRISTIANA</div>
+            </div>
+            ${d.middleSong ? `<div class="song">Canción ${esc(d.middleSong)}</div>` : ''}
+          </div>
+          <div class="items">${renderItems(d.life || [], d.lector || '')}</div>
+        </section>
+
+        ${d.closingSong ? `<div class="footer-note">Palabras de conclusión y canción ${esc(d.closingSong)}</div>` : ''}
+        ${d.prayerName ? `<div class="footer-prayer">Oración conclusión&nbsp;&nbsp;${esc(d.prayerName)}</div>` : ''}
+        ${d.cleaningLabel ? `<div class="cleaning">${esc(d.cleaningLabel)}</div>` : ''}
+      </div>
+    `;
+  }
+
+  function renderWeekend(d) {
+    if (!d.hasData) {
+      return '<div class="empty-state">No hay datos cargados para <strong>Reunión Fin de Semana</strong> en la semana actual.</div>';
     }
 
-    function renderPreaching(d) {
-      return '<div class="empty-state">Por ahora esta sección está vacía.</div>';
-    }
+    return `
+      <div class="weekend-wrap">
+        <div class="weekend-card">
+          <div class="weekend-top">${esc(d.headerTitle || '')}</div>
+          <div class="weekend-body">
+            ${d.president ? `<div class="weekend-president">PRESIDENTE: <span class="name">${esc(d.president)}</span></div>` : ''}
 
-    loadData(false);
-  </script>
+            ${d.publicTalk ? `
+              <div class="wk-section-header wk-green">
+                <div class="wk-left">
+                  <div class="wk-icon">
+                    <svg viewBox="0 0 52 28" xmlns="http://www.w3.org/2000/svg">
+                      <rect width="52" height="28" fill="#0b6e63"/>
+                      <path d="M6 18 C10 15,14 15,18 17 C21 13,31 13,34 17 C38 15,42 15,46 18 L46 19 C42 18,38 18,34 20 C31 16,21 16,18 20 C14 18,10 18,6 19 Z" fill="none" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"/>
+                      <path d="M24 9 L28 9" stroke="#fff" stroke-width="1.7" stroke-linecap="round"/>
+                    </svg>
+                  </div>
+                  <div class="wk-title">DISCURSO PÚBLICO</div>
+                </div>
+                ${d.publicTalk.song ? `<div class="wk-song">Canción ${esc(d.publicTalk.song)}</div>` : ''}
+              </div>
+              <div class="wk-talk-title">“${esc(d.publicTalk.title || '')}”</div>
+              ${d.publicTalk.speaker ? `<div class="wk-speaker">${esc(d.publicTalk.speaker)}</div>` : ''}
+              ${d.publicTalk.subtitle ? `<div class="wk-subtitle">${esc(d.publicTalk.subtitle)}</div>` : ''}
+            ` : ''}
+
+            ${d.watchtower ? `
+              <div class="wk-section-header wk-red" style="margin-top:12px;">
+                <div class="wk-left">
+                  <div class="wk-icon">
+                    <svg viewBox="0 0 52 28" xmlns="http://www.w3.org/2000/svg">
+                      <rect width="52" height="28" fill="#a51f27"/>
+                      <path d="M12 21 V10 L16 8 V21" fill="none" stroke="#fff" stroke-width="1.7" stroke-linejoin="round"/>
+                      <path d="M16 8 H23 L23 10" fill="none" stroke="#fff" stroke-width="1.7" stroke-linejoin="round"/>
+                      <path d="M21 10 H28 V13" fill="none" stroke="#fff" stroke-width="1.7" stroke-linejoin="round"/>
+                      <path d="M26 13 H33 V17" fill="none" stroke="#fff" stroke-width="1.7" stroke-linejoin="round"/>
+                    </svg>
+                  </div>
+                  <div class="wk-title">REUNIÓN LA ATALAYA</div>
+                </div>
+                ${d.watchtower.song ? `<div class="wk-song">Canción ${esc(d.watchtower.song)}</div>` : ''}
+              </div>
+              <div class="wk-watchtower-title">“${esc(d.watchtower.title || '')}”</div>
+              ${d.watchtower.conductor ? `<div class="wk-watchtower-conductor">${esc(d.watchtower.conductor)}</div>` : ''}
+            ` : ''}
+
+            ${d.closingSong ? `<div class="wk-bottom-song">Canción ${esc(d.closingSong)}</div>` : ''}
+            ${d.cleaningLabel ? `<div class="wk-cleaning">${esc(d.cleaningLabel)}</div>` : ''}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderPreaching() {
+    return '<div class="empty-state">Por ahora esta sección está vacía.</div>';
+  }
+
+  loadData(false);
+</script>  
 </body>
 </html>
