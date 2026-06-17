@@ -50,26 +50,6 @@
       box-shadow: 0 2px 8px rgba(11,110,99,.18);
     }
 
-    .toolbar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 10px;
-    }
-
-    .status { font-size: 13px; color: #496168; }
-
-    .reload-btn {
-      border: none;
-      background: #dfe8e6;
-      color: #18413b;
-      padding: 8px 12px;
-      border-radius: 999px;
-      cursor: pointer;
-      font-weight: 700;
-    }
-
     .view { display: none; }
     .view.active { display: block; }
     .hidden { display: none !important; }
@@ -125,12 +105,13 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 12px;
+      gap: 10px;
       margin-top: 10px;
       margin-bottom: 8px;
       padding-bottom: 6px;
       border-bottom-width: 3px;
       border-bottom-style: solid;
+      flex-wrap: nowrap;
     }
 
     .section-header-left {
@@ -138,6 +119,7 @@
       align-items: center;
       gap: 12px;
       min-width: 0;
+      flex: 1 1 auto;
     }
 
     .icon-box { width: 38px; height: 38px; flex: 0 0 38px; display: inline-flex; align-items: center; justify-content: center; }
@@ -151,11 +133,13 @@
     }
 
     .song {
-      font-size: clamp(1rem,1.3vw,1.28rem);
+      font-size: clamp(.95rem,1.2vw,1.2rem);
       font-weight: 700;
       white-space: nowrap;
       line-height: 1.1;
       text-align: right;
+      margin-left: auto;
+      flex: 0 0 auto;
     }
 
     .blue .section-header { border-bottom-color: var(--blue-line); }
@@ -188,16 +172,20 @@
       overflow-wrap: anywhere;
     }
 
-    .lector-inline {
-      display: inline-block;
-      margin-left: 24px;
+    .lector-below {
+      margin-top: 2px;
+      margin-left: 16px;
       color: var(--red);
-      font-size: clamp(1rem,1.2vw,1.4rem);
+      font-size: clamp(1rem,1.2vw,1.32rem);
       font-weight: 700;
-      white-space: nowrap;
+      line-height: 1.2;
     }
 
-    .lector-inline .lector-name { color: #111; font-weight: 400; margin-left: 4px; }
+    .lector-below .lector-name {
+      color: #111;
+      font-weight: 400;
+      margin-left: 4px;
+    }
 
     .footer-note {
       text-align: right;
@@ -290,15 +278,29 @@
       body { padding: 0; }
       .meeting-menu { position: sticky; top: 0; z-index: 20; background: rgba(237,241,242,.97); padding: 10px 12px 8px; margin-bottom: 0; backdrop-filter: blur(6px); }
       .meeting-tab { flex: 1 1 calc(50% - 8px); min-width: 148px; text-align: center; }
-      .toolbar { padding: 10px 12px; margin: 0; }
-      .page { border: none; box-shadow: none; min-height: calc(100vh - 104px); }
+      .page { border: none; box-shadow: none; min-height: calc(100vh - 64px); }
       .header { padding: 14px 16px 10px; }
       .president, .section, .footer-note, .footer-prayer, .cleaning { padding-left: 16px; padding-right: 16px; }
-      .section-header { flex-direction: column; align-items: flex-start; gap: 8px; }
-      .song { text-align: left; margin-left: 50px; white-space: normal; }
+
+      /* Mantener títulos + cánticos al costado también en móvil */
+      .section-header {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+      .section-header-left { gap: 10px; flex: 1 1 auto; min-width: 0; }
+      .section-title { font-size: 1.08rem; }
+      .song {
+        margin-left: auto;
+        text-align: right;
+        white-space: nowrap;
+        font-size: .92rem;
+      }
+
       .items { padding-left: 6px; }
       .item-person { margin-left: 14px; }
-      .lector-inline { display: block; margin-left: 0; margin-top: 6px; white-space: normal; }
+      .lector-below { margin-left: 14px; font-size: 1rem; }
       .footer-note, .footer-prayer { text-align: left; }
       .weekend-card { border-left: none; border-right: none; border-top: none; border-radius: 0 0 26px 26px; }
       .weekend-body { padding: 12px 16px 18px; }
@@ -306,6 +308,11 @@
 
     @media (max-width:420px) {
       .meeting-tab { flex: 1 1 100%; }
+      .icon-box, .icon-box svg { width: 34px; height: 34px; }
+      .section-title { font-size: 1rem; }
+      .song { font-size: .88rem; }
+      .item-person { margin-left: 10px; }
+      .lector-below { margin-left: 10px; font-size: .98rem; }
     }
   </style>
 </head>
@@ -315,11 +322,6 @@
       <button class="meeting-tab active" data-view="entresemana" type="button">REUNIÓN ENTRESEMANA</button>
       <button class="meeting-tab" data-view="findesemana" type="button">REUNIÓN FIN DE SEMANA</button>
       <button class="meeting-tab" data-view="predicacion" type="button">PREDICACIÓN</button>
-    </div>
-
-    <div class="toolbar">
-      <div class="status" id="status">Cargando datos…</div>
-      <button class="reload-btn" id="reloadBtn" type="button">Actualizar</button>
     </div>
 
     <div class="loading-state" id="loading">Cargando roles…</div>
@@ -347,11 +349,6 @@
     }
 
     tabs.forEach(tab => tab.addEventListener('click', () => activate(tab.dataset.view)));
-    document.getElementById('reloadBtn').addEventListener('click', () => loadData(true));
-
-    function setStatus(text) {
-      document.getElementById('status').textContent = text;
-    }
 
     function showLoading(isLoading) {
       document.getElementById('loading').classList.toggle('hidden', !isLoading);
@@ -369,24 +366,21 @@
 
     function showApiError(message, detail = '') {
       showLoading(false);
-      setStatus(message);
       views.entresemana.innerHTML = `<div class="error-state"><strong>${esc(message)}</strong>${detail ? `<small>${esc(detail)}</small>` : ''}</div>`;
       activate('entresemana');
     }
 
-    function loadData(forceBust = false) {
+    function loadData() {
       if (!API_URL) {
         showApiError('Falta configurar la URL del API.');
         return;
       }
 
       showLoading(true);
-      setStatus('Consultando Google Sheets…');
 
       const callbackName = '__rolesPrefix_' + Date.now();
       const separator = API_URL.includes('?') ? '&' : '?';
-      const bust = forceBust ? '&_ts=' + Date.now() : '';
-      const src = `${API_URL}${separator}prefix=${callbackName}${bust}`;
+      const src = `${API_URL}${separator}prefix=${callbackName}&_ts=${Date.now()}`;
 
       const script = document.createElement('script');
       script.src = src;
@@ -396,7 +390,7 @@
         cleanup();
         showApiError(
           'No se pudo cargar el API.',
-          'Se agotó el tiempo de espera. Revisa que la URL /exec sea pública y que Apps Script esté devolviendo JSONP.'
+          'Se agotó el tiempo de espera. Revisa que Apps Script siga devolviendo JSONP.'
         );
       }, 15000);
 
@@ -415,12 +409,6 @@
         }
 
         renderAll(data);
-
-        const generated = data.generatedAt
-          ? new Date(data.generatedAt).toLocaleString('es-PE')
-          : 'actualizado';
-
-        setStatus(`Datos cargados · ${generated}`);
         showLoading(false);
 
         const requested = (location.hash || '').replace('#', '').trim().toLowerCase();
@@ -449,11 +437,9 @@
         <div class="item">
           <div class="item-title">
             ${item.number ? esc(item.number) + '. ' : ''}${esc(item.title || '')}
-            ${item.isCongBibleStudy && lectorName
-              ? `<span class="lector-inline">Lector: <span class="lector-name">${esc(lectorName)}</span></span>`
-              : ''}
           </div>
           ${item.names ? `<div class="item-person">${esc(item.names)}</div>` : ''}
+          ${item.isCongBibleStudy && lectorName ? `<div class="lector-below">Lector:<span class="lector-name"> ${esc(lectorName)}</span></div>` : ''}
         </div>
       `).join('');
     }
@@ -598,7 +584,7 @@
       return '<div class="empty-state">Por ahora esta sección está vacía.</div>';
     }
 
-    loadData(false);
+    loadData();
   </script>
 </body>
 </html>
