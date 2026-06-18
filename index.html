@@ -19,6 +19,7 @@
       --border: #d8d8d4;
       --text: #152128;
       --tab-bg: #e9edeb;
+      --pdf-bg: #ffffff;
     }
 
     * { box-sizing: border-box; }
@@ -32,7 +33,14 @@
     }
 
     .app { max-width: 860px; margin: 0 auto; }
-    .meeting-menu { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 12px; }
+
+    .meeting-menu {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin: 0 0 12px;
+    }
+
     .meeting-tab {
       border: 1px solid #cfd6d8;
       background: var(--tab-bg);
@@ -43,6 +51,7 @@
       font-weight: 700;
       cursor: pointer;
     }
+
     .meeting-tab.active {
       background: var(--green-dark);
       color: white;
@@ -122,7 +131,15 @@
       flex: 1 1 auto;
     }
 
-    .icon-box { width: 38px; height: 38px; flex: 0 0 38px; display: inline-flex; align-items: center; justify-content: center; }
+    .icon-box {
+      width: 38px;
+      height: 38px;
+      flex: 0 0 38px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
     .icon-box svg { width: 38px; height: 38px; display: block; }
 
     .section-title {
@@ -274,15 +291,39 @@
     .wk-bottom-song { text-align: right; color: var(--green-dark); font-weight: 700; font-size: clamp(1rem,1.25vw,1.3rem); margin-top: 10px; }
     .wk-cleaning { text-align: right; color: var(--green-dark); font-size: clamp(1.5rem,2.1vw,2.25rem); font-weight: 800; margin-top: 8px; }
 
+    .pdf-wrap {
+      width: 100%;
+      height: calc(100vh - 110px);
+      min-height: 78vh;
+      background: var(--pdf-bg);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      overflow: hidden;
+      box-shadow: 0 2px 10px rgba(0,0,0,.06);
+    }
+
+    .pdf-frame {
+      width: 100%;
+      height: 100%;
+      border: none;
+      background: var(--pdf-bg);
+    }
+
     @media (max-width:640px) {
       body { padding: 0; }
-      .meeting-menu { position: sticky; top: 0; z-index: 20; background: rgba(237,241,242,.97); padding: 10px 12px 8px; margin-bottom: 0; backdrop-filter: blur(6px); }
+      .meeting-menu {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        background: rgba(237,241,242,.97);
+        padding: 10px 12px 8px;
+        margin-bottom: 0;
+        backdrop-filter: blur(6px);
+      }
       .meeting-tab { flex: 1 1 calc(50% - 8px); min-width: 148px; text-align: center; }
       .page { border: none; box-shadow: none; min-height: calc(100vh - 64px); }
       .header { padding: 14px 16px 10px; }
       .president, .section, .footer-note, .footer-prayer, .cleaning { padding-left: 16px; padding-right: 16px; }
-
-      /* Mantener títulos + cánticos al costado también en móvil */
       .section-header {
         flex-direction: row;
         align-items: center;
@@ -297,13 +338,19 @@
         white-space: nowrap;
         font-size: .92rem;
       }
-
       .items { padding-left: 6px; }
       .item-person { margin-left: 14px; }
       .lector-below { margin-left: 14px; font-size: 1rem; }
       .footer-note, .footer-prayer { text-align: left; }
       .weekend-card { border-left: none; border-right: none; border-top: none; border-radius: 0 0 26px 26px; }
       .weekend-body { padding: 12px 16px 18px; }
+      .pdf-wrap {
+        height: calc(100vh - 86px);
+        min-height: calc(100vh - 86px);
+        border: none;
+        border-radius: 0;
+        box-shadow: none;
+      }
     }
 
     @media (max-width:420px) {
@@ -322,22 +369,26 @@
       <button class="meeting-tab active" data-view="entresemana" type="button">REUNIÓN ENTRESEMANA</button>
       <button class="meeting-tab" data-view="findesemana" type="button">REUNIÓN FIN DE SEMANA</button>
       <button class="meeting-tab" data-view="predicacion" type="button">PREDICACIÓN</button>
+      <button class="meeting-tab" data-view="territorio" type="button">MAPA TERRITORIO</button>
     </div>
 
     <div class="loading-state" id="loading">Cargando roles…</div>
     <div class="view active hidden" id="view-entresemana"></div>
     <div class="view hidden" id="view-findesemana"></div>
     <div class="view hidden" id="view-predicacion"></div>
+    <div class="view hidden" id="view-territorio"></div>
   </div>
 
   <script>
     const API_URL = 'https://script.google.com/macros/s/AKfycbxCzMZ59Y4rEC8mR0_eqA3_yxDT1OXRC33CqsIUFgBqu92oDBkV-5V7rzD614NSa7cIhw/exec';
+    const TERRITORY_PDF = './TERRITORIO%20FLORES%20VIOLETAS%202025.pdf#toolbar=1&navpanes=0&view=FitH';
 
     const tabs = Array.from(document.querySelectorAll('.meeting-tab'));
     const views = {
       entresemana: document.getElementById('view-entresemana'),
       findesemana: document.getElementById('view-findesemana'),
-      predicacion: document.getElementById('view-predicacion')
+      predicacion: document.getElementById('view-predicacion'),
+      territorio: document.getElementById('view-territorio')
     };
 
     function activate(viewName) {
@@ -367,6 +418,9 @@
     function showApiError(message, detail = '') {
       showLoading(false);
       views.entresemana.innerHTML = `<div class="error-state"><strong>${esc(message)}</strong>${detail ? `<small>${esc(detail)}</small>` : ''}</div>`;
+      views.findesemana.innerHTML = '';
+      views.predicacion.innerHTML = '';
+      views.territorio.innerHTML = renderTerritorio();
       activate('entresemana');
     }
 
@@ -430,6 +484,7 @@
       views.entresemana.innerHTML = renderMidweek(data.entresemana || { hasData: false });
       views.findesemana.innerHTML = renderWeekend(data.findesemana || { hasData: false });
       views.predicacion.innerHTML = renderPreaching(data.predicacion || { hasData: false });
+      views.territorio.innerHTML = renderTerritorio();
     }
 
     function renderItems(items, lectorName = '') {
@@ -581,7 +636,19 @@
     }
 
     function renderPreaching() {
-      return '<div class="empty-state">Por ahora esta sección está vacía. Test 2</div>';
+      return '<div class="empty-state">Por ahora esta sección está vacía.</div>';
+    }
+
+    function renderTerritorio() {
+      return `
+        <div class="pdf-wrap">
+          <iframe
+            class="pdf-frame"
+            src="${TERRITORY_PDF}"
+            title="Mapa territorio"
+          ></iframe>
+        </div>
+      `;
     }
 
     loadData();
