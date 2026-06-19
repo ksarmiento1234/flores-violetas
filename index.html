@@ -50,7 +50,7 @@
     /* predicación */
     .pred-wrap { display:grid; gap:14px; }
     .pred-next { background:linear-gradient(135deg,#fff,#f2f7f6); border:1px solid #d3dfdc; border-radius:20px; padding:18px; box-shadow:0 2px 10px rgba(0,0,0,.05); }
-    .pred-next-label { font-size:12px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--green); margin-bottom:8px; }
+    .pred-next-label { font-size:15px; font-weight:900; letter-spacing:.05em; text-transform:uppercase; color:var(--green); margin-bottom:10px; }
     .pred-next-head { display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:flex-start; }
     .pred-dayline { font-size:clamp(1.25rem,1.9vw,1.7rem); font-weight:800; color:#0f3c37; }
     .pred-hours { margin-top:4px; color:var(--muted); font-size:1rem; }
@@ -229,7 +229,7 @@
     const DAY_LABEL = { lunes:'Lunes', martes:'Martes', miercoles:'Miércoles', jueves:'Jueves', viernes:'Viernes', sabado:'Sábado', domingo:'Domingo' };
     function normText(v) { return String(v ?? '').normalize('NFD').replace(/[̀-ͯ]/g,'').trim().toLowerCase(); }
     function toMinutes(hhmm) { if (!hhmm) return null; const p = String(hhmm).split(':'); if (p.length < 2) return null; const h = Number(p[0]), m = Number(p[1]); if (Number.isNaN(h) || Number.isNaN(m)) return null; return h*60 + m; }
-    function formatDayDate(dateStr, fallback) { if (!dateStr) return fallback || ''; const d = new Date(dateStr + 'T00:00:00'); if (isNaN(d)) return fallback || dateStr; return new Intl.DateTimeFormat('es-PE', { day:'numeric', month:'long' }).format(d); }
+    function formatDayDate(dateStr, fallback) { if (!dateStr) return ''; const d = new Date(dateStr + 'T00:00:00'); if (isNaN(d)) return fallback || dateStr; return new Intl.DateTimeFormat('es-PE', { day:'numeric', month:'long' }).format(d); }
     function formatTimeRange(item) { if (item.horaTexto) return item.horaTexto; if (item.horaInicioTexto && item.horaFinTexto) return `${item.horaInicioTexto} - ${item.horaFinTexto}`; return ''; }
     function preprocessPredication(raw) {
       const items = Array.isArray(raw.items) ? raw.items : [];
@@ -242,7 +242,7 @@
           dia: dayName,
           diaNorm: normText(dayName),
           fechaISO: it.fechaISO || it.fecha || '',
-          fechaBonita: formatDayDate(it.fechaISO || it.fecha || '', dayName),
+          fechaBonita: formatDayDate(it.fechaISO || it.fecha || ''),
           turno: it.turno || (shiftNorm.includes('noche') ? 'Noche' : 'Mañana'),
           turnoNorm: shiftNorm.includes('noche') ? 'noche' : 'mañana',
           horaInicio: it.horaInicio || '',
