@@ -300,7 +300,7 @@
 
       const daysHtml = DAY_ORDER.map(day => {
         const g = grouped[day];
-        return `<div class="pred-day-card"><div class="pred-day-head"><div class="pred-day-name">${DAY_LABEL[day]}</div>${g.date ? `<div class="pred-day-date">${esc(g.date)}</div>` : ''}</div><div class="pred-day-grid"><div class="pred-shift-col">${renderPredShift(g.manana)}</div><div class="pred-shift-col">${renderPredShift(g.noche)}</div></div></div>`;
+        return `<div class="pred-day-card"><div class="pred-day-head"><div class="pred-day-name">${DAY_LABEL[day]}</div>${g.date ? : ''}</div><div class="pred-day-grid"><div class="pred-shift-col">${renderPredShift(g.manana)}</div><div class="pred-shift-col">${renderPredShift(g.noche)}</div></div></div>`;
       }).join('');
 
       return `<div class="pred-wrap">${top}<div class="pred-program"><div class="pred-program-head"><div><div class="pred-program-title">Programa completo de predicación</div>${weekLabel ? `<div class="pred-week-label">${esc(weekLabel)}</div>` : ''}</div></div><div class="pred-days">${daysHtml || '<div class="empty-state">No hay turnos de predicación cargados todavía.</div>'}</div></div></div>`;
