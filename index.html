@@ -33,16 +33,44 @@
     body { font-family:Arial,Helvetica,sans-serif; background:var(--bg); color:var(--text); padding:14px; }
     .app { max-width:980px; margin:0 auto; }
 
-    .meeting-menu { display:flex; gap:8px; flex-wrap:wrap; margin:0 0 12px; }
-    .meeting-tab { border:1px solid #cfd6d8; background:var(--tab); color:#23443f; padding:10px 14px; border-radius:999px; font-size:14px; font-weight:700; cursor:pointer; }
-    .meeting-tab.active { background:var(--green); color:#fff; border-color:var(--green); box-shadow:0 2px 8px rgba(11,110,99,.18); }
+    /* MENÚ EN UNA SOLA FILA */
+    .meeting-menu {
+      display:grid;
+      grid-template-columns:repeat(4, minmax(0, 1fr));
+      gap:6px;
+      margin:0 0 12px;
+      width:100%;
+    }
+    .meeting-tab {
+      border:1px solid #cfd6d8;
+      background:var(--tab);
+      color:#23443f;
+      padding:10px 8px;
+      border-radius:999px;
+      font-size:clamp(10px, 2.4vw, 13px);
+      font-weight:800;
+      cursor:pointer;
+      white-space:nowrap;
+      text-align:center;
+      width:100%;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      line-height:1.1;
+    }
+    .meeting-tab.active {
+      background:var(--green);
+      color:#fff;
+      border-color:var(--green);
+      box-shadow:0 2px 8px rgba(11,110,99,.18);
+    }
+
     .view { display:none; }
     .view.active { display:block; }
-    .hidden { display:none !important; }
+    .hidden { display:none!important; }
     .loading-state,.empty-state,.error-state { background:#fff; border:1px dashed #cad2d6; border-radius:20px; padding:28px 20px; text-align:center; color:#506067; font-size:16px; }
     .error-state small { display:block; margin-top:8px; color:#8b4a4a; white-space:pre-wrap; }
 
-    /* ENTRESEMANA */
+    /* VIDA Y MINISTERIO */
     .card { background:var(--paper); border:1px solid var(--border); border-radius:18px; box-shadow:0 2px 10px rgba(0,0,0,.05); overflow:hidden; }
     .head { background:var(--green); color:#fff; padding:14px 18px 10px; font-size:clamp(1.35rem,2.2vw,1.95rem); line-height:1.15; }
     .sub { background:var(--green-soft); color:var(--green); padding:6px 18px 8px; font-weight:700; }
@@ -61,7 +89,7 @@
     .footer-note,.footer-prayer,.cleaning { padding:0 18px 12px; color:var(--green); font-weight:700; }
     .cleaning { font-size:1.35rem; padding-bottom:18px; }
 
-    /* FIN DE SEMANA - rediseño más fiel */
+    /* CONFERENCIA Y ATALAYA */
     .wk-wrap { max-width:760px; margin:0 auto; }
     .wk-card { background:#f7f7f2; border:2px solid #2f8b7f; border-radius:0 0 42px 42px; overflow:hidden; }
     .wk-date { text-align:center; color:var(--green); font-size:clamp(2rem,3vw,2.6rem); font-weight:800; padding:16px 18px 14px; border-bottom:1px solid #2f8b7f; }
@@ -120,7 +148,7 @@
     .pred-shift-note { display:inline-block; margin-top:8px; background:var(--chip); color:#33444a; border-radius:999px; padding:6px 10px; font-size:.88rem; font-weight:700; }
     .pred-empty { color:var(--muted); font-size:.95rem; font-style:italic; padding-top:8px; }
 
-    /* PDF */
+    /* MAPA */
     .pdf-wrap { width:100%; height:calc(100vh - 110px); min-height:78vh; background:var(--pdf-bg); border:1px solid var(--border); border-radius:18px; overflow:hidden; box-shadow:0 2px 10px rgba(0,0,0,.06); }
     .pdf-frame { width:100%; height:100%; border:none; background:var(--pdf-bg); }
 
@@ -133,15 +161,14 @@
     }
     @media (max-width:640px) {
       body { padding:0; }
-      .meeting-menu { position:sticky; top:0; z-index:20; background:rgba(237,241,242,.97); padding:10px 12px 8px; margin-bottom:0; backdrop-filter:blur(6px); }
-      .meeting-tab { flex:1 1 calc(50% - 8px); min-width:148px; text-align:center; }
+      .meeting-menu { position:sticky; top:0; z-index:20; background:rgba(237,241,242,.97); padding:10px 8px 8px; margin-bottom:0; backdrop-filter:blur(6px); }
       .card,.pred-program,.pdf-wrap,.pred-next,.wk-card { border-left:none; border-right:none; box-shadow:none; border-radius:0; }
       .pred-program-head,.pred-days { padding-left:16px; padding-right:16px; }
       .pdf-wrap { height:calc(100vh - 86px); min-height:calc(100vh - 86px); }
       .wk-date { font-size:2rem; }
     }
     @media (max-width:420px) {
-      .meeting-tab { flex:1 1 100%; }
+      .meeting-tab { font-size:10px; padding:9px 4px; }
       .pred-day-name { font-size:1.15rem; }
       .pred-dayline { font-size:1.18rem; }
       .item-person,.lector-below { margin-left:10px; }
@@ -151,25 +178,30 @@
 <body>
   <div class="app">
     <div class="meeting-menu" role="tablist" aria-label="Tipo de reunión">
-      <button class="meeting-tab active" data-view="entresemana" type="button">REUNIÓN ENTRESEMANA</button>
-      <button class="meeting-tab" data-view="findesemana" type="button">REUNIÓN FIN DE SEMANA</button>
-      <button class="meeting-tab" data-view="predicacion" type="button">PREDICACIÓN</button>
-      <button class="meeting-tab" data-view="territorio" type="button">MAPA TERRITORIO</button>
+      <button class="meeting-tab active" data-view="predicacion" type="button">PREDICACIÓN</button>
+      <button class="meeting-tab" data-view="territorio" type="button">MAPA</button>
+      <button class="meeting-tab" data-view="entreesemana" type="button">VIDA Y MINISTERIO</button>
+      <button class="meeting-tab" data-view="findesemana" type="button">CONFERENCIA Y ATALAYA</button>
     </div>
     <div class="loading-state" id="loading">Cargando roles…</div>
-    <div class="view active hidden" id="view-entresemana"></div>
+    <div class="view hidden" id="view-entresemana"></div>
     <div class="view hidden" id="view-findesemana"></div>
-    <div class="view hidden" id="view-predicacion"></div>
+    <div class="view active hidden" id="view-predicacion"></div>
     <div class="view hidden" id="view-territorio"></div>
   </div>
   <script>
     const API_URL = 'https://script.google.com/macros/s/AKfycbxCzMZ59Y4rEC8mR0_eqA3_yxDT1OXRC33CqsIUFgBqu92oDBkV-5V7rzD614NSa7cIhw/exec';
     const TERRITORY_PDF = './TERRITORIO%20FLORES%20VIOLETAS%202025.pdf#toolbar=1&navpanes=0&view=FitH';
     const tabs = Array.from(document.querySelectorAll('.meeting-tab'));
-    const views = {entresemana:document.getElementById('view-entresemana'),findesemana:document.getElementById('view-findesemana'),predicacion:document.getElementById('view-predicacion'),territorio:document.getElementById('view-territorio')};
+    const views = {
+      entresemana: document.getElementById('view-entresemana'),
+      findesemana: document.getElementById('view-findesemana'),
+      predicacion: document.getElementById('view-predicacion'),
+      territorio: document.getElementById('view-territorio')
+    };
 
     function activate(viewName) {
-      const valid = views[viewName] ? viewName : 'entresemana';
+      const valid = views[viewName] ? viewName : 'predicacion';
       tabs.forEach(tab => tab.classList.toggle('active', tab.dataset.view === valid));
       Object.keys(views).forEach(key => views[key].classList.toggle('active', key === valid));
       if (location.hash !== '#' + valid) history.replaceState(null, '', '#' + valid);
@@ -186,11 +218,11 @@
     }
     function showApiError(message, detail='') {
       showLoading(false);
-      views.entresemana.innerHTML = `<div class="error-state"><strong>${esc(message)}</strong>${detail ? `<small>${esc(detail)}</small>` : ''}</div>`;
-      views.findesemana.innerHTML = '';
       views.predicacion.innerHTML = renderPreaching({hasData:false,items:[]});
       views.territorio.innerHTML = renderTerritorio();
-      activate('entresemana');
+      views.entreesemana.innerHTML = `<div class="error-state"><strong>${esc(message)}</strong>${detail ? `<small>${esc(detail)}</small>` : ''}</div>`;
+      views.findesemana.innerHTML = '';
+      activate('predicacion');
     }
     function loadData() {
       if (!API_URL) { showApiError('Falta configurar la URL del API.'); return; }
@@ -207,21 +239,21 @@
         if (!data || data.ok !== true) { showApiError('El API respondió con datos inválidos.', JSON.stringify(data || {})); return; }
         renderAll(data); showLoading(false);
         const requested = (location.hash || '').replace('#','').trim().toLowerCase();
-        activate(requested || 'entresemana');
+        activate(requested || 'predicacion');
       };
       script.onerror = function() { cleanup(); showApiError('Error al cargar el API.','La URL respondió con error o Apps Script devolvió una página distinta a JavaScript.'); };
       document.body.appendChild(script);
     }
 
     function renderAll(data) {
-      views.entresemana.innerHTML = renderMidweek(data.entresemana || {hasData:false});
+      views.entreesemana.innerHTML = renderMidweek(data.entreesemana || {hasData:false});
       views.findesemana.innerHTML = renderWeekend(data.findesemana || {hasData:false});
       views.predicacion.innerHTML = renderPreaching(data.predicacion || {hasData:false,items:[]});
       views.territorio.innerHTML = renderTerritorio();
     }
 
     function renderMidweek(d) {
-      if (!d || !d.hasData) return '<div class="empty-state">No hay datos cargados para <strong>Reunión Entresemana</strong> en la semana actual.</div>';
+      if (!d || !d.hasData) return '<div class="empty-state">No hay datos cargados para <strong>Vida y Ministerio</strong> en la semana actual.</div>';
       const renderList = (items, cls, lector='') => (items || []).map(it => `
 <div class="item"><div class="item-title ${cls}">${it.number ? esc(it.number)+'. ' : ''}${esc(it.title || '')}</div>${it.names ? `<div class="item-person">${esc(it.names)}</div>` : ''}${it.isCongBibleStudy && lector ? `<div class="lector-below">Lector:<span class="lector-name"> ${esc(lector)}</span></div>` : ''}</div>`).join('');
       return `
@@ -229,7 +261,7 @@
     }
 
     function renderWeekend(d) {
-      if (!d || !d.hasData) return '<div class="empty-state">No hay datos cargados para <strong>Reunión Fin de Semana</strong> en la semana actual.</div>';
+      if (!d || !d.hasData) return '<div class="empty-state">No hay datos cargados para <strong>Conferencia y Atalaya</strong> en la semana actual.</div>';
       return `
 <div class="wk-wrap"><div class="wk-card"><div class="wk-date">${esc(d.headerTitle || '')}</div><div class="wk-body">${d.president ? `<div class="wk-president">PRESIDENTE: <span class="name">${esc(d.president)}</span></div>` : ''}${d.publicTalk ? `<div class="wk-band wk-green-band"><div class="wk-band-left"><div class="wk-icon-box"><svg viewBox="0 0 64 36" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="36" fill="#0b6e63"/><path d="M7 23 C12 20,17 20,22 22 C26 18,38 18,42 22 C47 20,52 20,57 23 L57 24 C52 23,47 23,42 25 C38 21,26 21,22 25 C17 23,12 23,7 24 Z" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round"/><path d="M29 12 L35 12" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg></div><div class="wk-band-title">DISCURSO PÚBLICO</div></div>${d.publicTalk.song ? `<div class="wk-band-song">Canción ${esc(d.publicTalk.song)}</div>` : ''}</div><div class="wk-main-title">“${esc(d.publicTalk.title || '')}”</div>${d.publicTalk.speaker ? `<div class="wk-main-speaker">${esc(d.publicTalk.speaker)}</div>` : ''}${d.publicTalk.subtitle ? `<div class="wk-main-sub">${esc(d.publicTalk.subtitle)}</div>` : ''}` : ''}${d.watchtower ? `<div class="wk-band wk-red-band"><div class="wk-band-left"><div class="wk-icon-box"><svg viewBox="0 0 64 36" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="36" fill="#b11f29"/><path d="M14 27 V13 L20 10 V27" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round"/><path d="M20 10 H30 L30 13" fill="none" stroke="#fff" stroke-width="2"/><path d="M28 13 H38 V17" fill="none" stroke="#fff" stroke-width="2"/><path d="M36 17 H46 V22" fill="none" stroke="#fff" stroke-width="2"/></svg></div><div class="wk-band-title">REUNIÓN LA ATALAYA</div></div>${d.watchtower.song ? `<div class="wk-band-song">Canción ${esc(d.watchtower.song)}</div>` : ''}</div><div class="wk-watch-title">“${esc(d.watchtower.title || '')}”</div>${d.watchtower.conductor ? `<div class="wk-watch-conductor">${esc(d.watchtower.conductor)}</div>` : ''}` : ''}${d.closingSong ? `<div class="wk-foot-song">Canción ${esc(d.closingSong)}</div>` : ''}${d.cleaningLabel ? `<div class="wk-cleaning">${esc(d.cleaningLabel)}</div>` : ''}</div></div></div>`;
     }
@@ -249,7 +281,7 @@
       }).sort((a,b) => (a.fechaISO || '').localeCompare(b.fechaISO || '') || (a.horaInicio || '').localeCompare(b.horaInicio || ''));
     }
     function isMeetingBlock(it) { return normText(it.puntoReunion || '').includes('vida y ministerio'); }
-  function getPredChip(turnoNorm) { return `<span class="pred-chip ${turnoNorm === 'noche' ? 'noche' : 'manana'}">${turnoNorm === 'noche' ? 'Noche' : 'Mañana'}</span>`; }
+    function getPredChip(turnoNorm) { return `<span class="pred-chip ${turnoNorm === 'noche' ? 'noche' : 'manana'}">${turnoNorm === 'noche' ? 'Noche' : 'Mañana'}</span>`; }
     function getHeadline(items) {
       if (!items.length) return null;
       const now = new Date();
@@ -263,21 +295,11 @@
       return { mode:'proximo', item: future || items[0] };
     }
     function renderPredShift(it) {
-  if (!it) return '<div class="pred-empty">Sin turno</div>';
-
-  const meeting = isMeetingBlock(it);
-
-  return `
-    <div class="pred-shift-top">
-      ${getPredChip(it.turnoNorm)}
-      <div class="pred-shift-time">${esc(formatTimeRange(it))}</div>
-    </div>
-    <div class="pred-shift-point">${esc(it.puntoReunion || '')}</div>
-    ${!meeting && it.conductor ? `<div class="pred-shift-conductor">${esc(it.conductor)}</div>` : ''}
-    ${!meeting && it.territorio ? `<div class="pred-shift-territory">Territorio: ${esc(it.territorio)}</div>` : ''}
-    ${!meeting && it.notas ? `<span class="pred-shift-note">${esc(it.notas)}</span>` : ''}
-  `;
-}
+      if (!it) return '<div class="pred-empty">Sin turno</div>';
+      const meeting = isMeetingBlock(it);
+      return `
+<div class="pred-shift-top">${getPredChip(it.turnoNorm)}<div class="pred-shift-time">${esc(formatTimeRange(it))}</div></div><div class="pred-shift-point">${esc(it.puntoReunion || '')}</div>${!meeting && it.conductor ? `<div class="pred-shift-conductor">${esc(it.conductor)}</div>` : ''}${!meeting && it.territorio ? `<div class="pred-shift-territory">Territorio: ${esc(it.territorio)}</div>` : ''}${!meeting && it.notas ? `<span class="pred-shift-note">${esc(it.notas)}</span>` : ''}`;
+    }
     function renderPreaching(d) {
       const items = preprocessPredication(d || {hasData:false,items:[]});
       const weekLabel = d && d.semanaTexto ? d.semanaTexto : '';
