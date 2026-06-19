@@ -249,7 +249,7 @@
       }).sort((a,b) => (a.fechaISO || '').localeCompare(b.fechaISO || '') || (a.horaInicio || '').localeCompare(b.horaInicio || ''));
     }
     function isMeetingBlock(it) { return normText(it.puntoReunion || '').includes('vida y ministerio'); }
-    function getPredChip(turnoNorm) { return `<span class="pred-chip ${turnoNorm === 'noche' ? 'noche' : 'manana'}">${turnoNorm === 'noche' ? 'Noche' : 'Mañana'}</span>`; }
+  function getPredChip(turnoNorm) { return `<span class="pred-chip ${turnoNorm === 'noche' ? 'noche' : 'manana'}">${turnoNorm === 'noche' ? 'Noche' : 'Mañana'}</span>`; }
     function getHeadline(items) {
       if (!items.length) return null;
       const now = new Date();
@@ -263,11 +263,21 @@
       return { mode:'proximo', item: future || items[0] };
     }
     function renderPredShift(it) {
-      if (!it) return '<div class="pred-empty">Sin turno</div>';
-      const meeting = isMeetingBlock(it);
-      return `
-<div class="pred-shift-top"><div class="pred-shift-title">${esc(it.turno || '')}</div><div class="pred-shift-time">${esc(formatTimeRange(it))}</div></div><div class="pred-shift-point">${esc(it.puntoReunion || '')}</div>${!meeting && it.conductor ? `<div class="pred-shift-conductor">${esc(it.conductor)}</div>` : ''}${!meeting && it.territorio ? `<div class="pred-shift-territory">Territorio: ${esc(it.territorio)}</div>` : ''}${!meeting && it.notas ? `<span class="pred-shift-note">${esc(it.notas)}</span>` : ''}`;
-    }
+  if (!it) return '<div class="pred-empty">Sin turno</div>';
+
+  const meeting = isMeetingBlock(it);
+
+  return `
+    <div class="pred-shift-top">
+      ${getPredChip(it.turnoNorm)}
+      <div class="pred-shift-time">${esc(formatTimeRange(it))}</div>
+    </div>
+    <div class="pred-shift-point">${esc(it.puntoReunion || '')}</div>
+    ${!meeting && it.conductor ? `<div class="pred-shift-conductor">${esc(it.conductor)}</div>` : ''}
+    ${!meeting && it.territorio ? `<div class="pred-shift-territory">Territorio: ${esc(it.territorio)}</div>` : ''}
+    ${!meeting && it.notas ? `<span class="pred-shift-note">${esc(it.notas)}</span>` : ''}
+  `;
+}
     function renderPreaching(d) {
       const items = preprocessPredication(d || {hasData:false,items:[]});
       const weekLabel = d && d.semanaTexto ? d.semanaTexto : '';
