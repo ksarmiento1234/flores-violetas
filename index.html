@@ -109,7 +109,7 @@
 <body>
   <div class="app">
     <div class="meeting-menu" role="tablist" aria-label="Tipo de reunión">
-      <button class="meeting-tab active" data-view="entreesemana" type="button">REUNIÓN ENTRESEMANA</button>
+      <button class="meeting-tab active" data-view="entresemana" type="button">REUNIÓN ENTRESEMANA</button>
       <button class="meeting-tab" data-view="findesemana" type="button">REUNIÓN FIN DE SEMANA</button>
       <button class="meeting-tab" data-view="predicacion" type="button">PREDICACIÓN</button>
       <button class="meeting-tab" data-view="territorio" type="button">MAPA TERRITORIO</button>
@@ -132,7 +132,7 @@
     };
 
     function activate(viewName) {
-      const valid = views[viewName] ? viewName : 'entreesemana';
+      const valid = views[viewName] ? viewName : 'entresemana';
       tabs.forEach(tab => tab.classList.toggle('active', tab.dataset.view === valid));
       Object.keys(views).forEach(key => views[key].classList.toggle('active', key === valid));
       if (location.hash !== '#' + valid) history.replaceState(null, '', '#' + valid);
@@ -149,11 +149,11 @@
     }
     function showApiError(message, detail='') {
       showLoading(false);
-      views.entreesemana.innerHTML = `<div class="error-state"><strong>${esc(message)}</strong>${detail ? `<small>${esc(detail)}</small>` : ''}</div>`;
+      views.entresemana.innerHTML = `<div class="error-state"><strong>${esc(message)}</strong>${detail ? `<small>${esc(detail)}</small>` : ''}</div>`;
       views.findesemana.innerHTML = '';
       views.predicacion.innerHTML = renderPreaching({hasData:false,items:[]});
       views.territorio.innerHTML = renderTerritorio();
-      activate('entreesemana');
+      activate('entresemana');
     }
     function loadData() {
       if (!API_URL) { showApiError('Falta configurar la URL del API.'); return; }
@@ -171,14 +171,14 @@
         renderAll(data);
         showLoading(false);
         const requested = (location.hash || '').replace('#','').trim().toLowerCase();
-        activate(requested || 'entreesemana');
+        activate(requested || 'entresemana');
       };
       script.onerror = function() { cleanup(); showApiError('Error al cargar el API.','La URL respondió con error o Apps Script devolvió una página distinta a JavaScript.'); };
       document.body.appendChild(script);
     }
 
     function renderAll(data) {
-      views.entreesemana.innerHTML = renderMidweek(data.entreesemana || {hasData:false});
+      views.entresemana.innerHTML = renderMidweek(data.entresemana || {hasData:false});
       views.findesemana.innerHTML = renderWeekend(data.findesemana || {hasData:false});
       views.predicacion.innerHTML = renderPreaching(data.predicacion || {hasData:false,items:[]});
       views.territorio.innerHTML = renderTerritorio();
