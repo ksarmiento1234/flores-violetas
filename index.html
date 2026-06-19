@@ -180,7 +180,7 @@
     <div class="meeting-menu" role="tablist" aria-label="Tipo de reunión">
       <button class="meeting-tab active" data-view="predicacion" type="button">PREDICACIÓN</button>
       <button class="meeting-tab" data-view="territorio" type="button">MAPA</button>
-      <button class="meeting-tab" data-view="entreesemana" type="button">VIDA Y MINISTERIO</button>
+      <button class="meeting-tab" data-view="entresemana" type="button">VIDA Y MINISTERIO</button>
       <button class="meeting-tab" data-view="findesemana" type="button">CONFERENCIA Y ATALAYA</button>
     </div>
     <div class="loading-state" id="loading">Cargando roles…</div>
@@ -220,7 +220,7 @@
       showLoading(false);
       views.predicacion.innerHTML = renderPreaching({hasData:false,items:[]});
       views.territorio.innerHTML = renderTerritorio();
-      views.entreesemana.innerHTML = `<div class="error-state"><strong>${esc(message)}</strong>${detail ? `<small>${esc(detail)}</small>` : ''}</div>`;
+      views.entresemana.innerHTML = `<div class="error-state"><strong>${esc(message)}</strong>${detail ? `<small>${esc(detail)}</small>` : ''}</div>`;
       views.findesemana.innerHTML = '';
       activate('predicacion');
     }
@@ -246,7 +246,7 @@
     }
 
     function renderAll(data) {
-      views.entreesemana.innerHTML = renderMidweek(data.entreesemana || {hasData:false});
+      views.entresemana.innerHTML = renderMidweek(data.entresemana || {hasData:false});
       views.findesemana.innerHTML = renderWeekend(data.findesemana || {hasData:false});
       views.predicacion.innerHTML = renderPreaching(data.predicacion || {hasData:false,items:[]});
       views.territorio.innerHTML = renderTerritorio();
