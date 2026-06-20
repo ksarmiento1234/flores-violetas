@@ -6,33 +6,96 @@
   <title>Roles semanales</title>
   <style>
     :root {
-      --green:#0b6e63; --green-soft:#d9ddda; --green-line:#2c7b70;
-      --blue:#3c7f8f; --blue-line:#4f8d98; --gold:#a87d10; --gold-line:#b18a18;
-      --red:#a51f27; --red-line:#b13338; --bg:#edf1f2; --paper:#f5f5f3;
-      --border:#d8d8d4; --text:#152128; --muted:#5e6a70; --tab:#e9edeb;
-      --night:#183556; --daychip:#e0b11a; --daybg:#23443f; --pdf-bg:#fff; --chip:#f0f3f4;
+      --green:#0b6e63;
+      --green-soft:#d9ddda;
+      --green-line:#2c7b70;
+      --blue:#3c7f8f;
+      --gold:#a87d10;
+      --red:#a51f27;
+      --bg:#edf1f2;
+      --paper:#f5f5f3;
+      --border:#d8d8d4;
+      --text:#152128;
+      --muted:#5e6a70;
+      --tab:#e9edeb;
+      --night:#183556;
+      --daychip:#e0b11a;
+      --pdf-bg:#fff;
+      --chip:#f0f3f4;
     }
+
     * { box-sizing:border-box; }
     html, body { margin:0; padding:0; }
     body { font-family:Arial,Helvetica,sans-serif; background:var(--bg); color:var(--text); padding:14px; }
     .app { max-width:980px; margin:0 auto; }
-    .meeting-menu { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px; margin:0 0 12px; width:100%; }
-    .meeting-tab { border:1px solid #cfd6d8; background:var(--tab); color:#23443f; padding:10px 8px; border-radius:999px; font-size:clamp(10px,2.4vw,13px); font-weight:800; cursor:pointer; white-space:nowrap; text-align:center; width:100%; overflow:hidden; text-overflow:ellipsis; line-height:1.1; }
-    .meeting-tab.active { background:var(--green); color:#fff; border-color:var(--green); box-shadow:0 2px 8px rgba(11,110,99,.18); }
-    .view { display:none; } .view.active { display:block; } .hidden { display:none!important; }
-    .loading-state,.empty-state,.error-state { background:#fff; border:1px dashed #cad2d6; border-radius:20px; padding:28px 20px; text-align:center; color:#506067; font-size:16px; }
+
+    .meeting-menu {
+      display:grid;
+      grid-template-columns:repeat(4,minmax(0,1fr));
+      gap:6px;
+      margin:0 0 12px;
+      width:100%;
+    }
+    .meeting-tab {
+      border:1px solid #cfd6d8;
+      background:var(--tab);
+      color:#23443f;
+      padding:11px 8px;
+      border-radius:999px;
+      font-size:clamp(11px,2.6vw,14px);
+      font-weight:800;
+      cursor:pointer;
+      text-align:center;
+      width:100%;
+      line-height:1.08;
+      min-height:42px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .meeting-tab.active {
+      background:var(--green);
+      color:#fff;
+      border-color:var(--green);
+      box-shadow:0 2px 8px rgba(11,110,99,.18);
+    }
+    .meeting-tab .topline,
+    .meeting-tab .bottomline { display:inline; }
+    .meeting-tab .bottomline { margin-left:3px; }
+
+    .view { display:none; }
+    .view.active { display:block; }
+    .hidden { display:none!important; }
+    .loading-state,.empty-state,.error-state {
+      background:#fff;
+      border:1px dashed #cad2d6;
+      border-radius:20px;
+      padding:28px 20px;
+      text-align:center;
+      color:#506067;
+      font-size:16px;
+    }
     .error-state small { display:block; margin-top:8px; color:#8b4a4a; white-space:pre-wrap; }
 
+    /* VIDA Y MINISTERIO */
     .card { background:var(--paper); border:1px solid var(--border); border-radius:18px; box-shadow:0 2px 10px rgba(0,0,0,.05); overflow:hidden; }
-    .head { background:var(--green); color:#fff; padding:14px 18px 10px; font-size:clamp(1.35rem,2.2vw,1.95rem); line-height:1.15; }
+    .head { background:var(--green); color:#fff; padding:14px 18px 10px; }
     .head-nav { display:grid; grid-template-columns:44px 1fr 44px; align-items:center; gap:10px; }
-    .nav-arrow { width:44px; height:44px; border:none; border-radius:999px; background:rgba(255,255,255,.16); color:#fff; font-size:20px; font-weight:800; cursor:pointer; }
+    .nav-arrow {
+      width:44px; height:44px; border:none; border-radius:999px;
+      background:rgba(255,255,255,.16); color:#fff; font-size:20px; font-weight:800; cursor:pointer;
+    }
     .nav-arrow:disabled { opacity:.35; cursor:not-allowed; }
     .head-title { text-align:center; font-size:clamp(1.08rem,2vw,1.55rem); font-weight:800; line-height:1.2; }
     .sub { background:var(--green-soft); color:var(--green); padding:6px 18px 8px; font-weight:700; }
     .block { padding:0 18px 12px; }
     .section-title { font-size:1.1rem; font-weight:800; text-transform:uppercase; margin:14px 0 8px; padding-bottom:6px; border-bottom:3px solid; }
-    .s-blue { color:var(--blue); border-color:var(--blue-line); } .s-gold { color:var(--gold); border-color:var(--gold-line); } .s-red { color:var(--red); border-color:var(--red-line); }
+    .s-blue { color:var(--blue); border-color:#4f8d98; }
+    .s-gold { color:var(--gold); border-color:#b18a18; }
+    .s-red { color:var(--red); border-color:#b13338; }
     .song { float:right; font-size:.98rem; font-weight:700; }
     .item { margin:10px 0; }
     .item-title { font-size:1.08rem; font-weight:700; line-height:1.25; }
@@ -43,9 +106,12 @@
     .footer-note,.footer-prayer,.cleaning { padding:0 18px 12px; color:var(--green); font-weight:700; }
     .cleaning { font-size:1.35rem; padding-bottom:18px; }
 
-    .wk-wrap { max-width:760px; margin:0 auto; }
+    /* CONFERENCIA Y ATALAYA */
+    .wk-wrap { max-width:780px; margin:0 auto; }
     .wk-card { background:#f7f7f2; border:2px solid #2f8b7f; border-radius:0 0 42px 42px; overflow:hidden; }
-    .wk-date { text-align:center; color:var(--green); font-size:clamp(2rem,3vw,2.6rem); font-weight:800; padding:16px 18px 14px; border-bottom:1px solid #2f8b7f; }
+    .wk-date { background:#f7f7f2; color:var(--green); padding:16px 18px 14px; border-bottom:1px solid #2f8b7f; }
+    .wk-date-nav { display:grid; grid-template-columns:44px 1fr 44px; gap:10px; align-items:center; }
+    .wk-date-title { text-align:center; font-size:clamp(2rem,3vw,2.6rem); font-weight:800; line-height:1.1; }
     .wk-body { padding:16px 44px 22px; }
     .wk-president { color:var(--green); font-size:clamp(1.1rem,1.5vw,1.5rem); font-weight:800; margin-bottom:16px; }
     .wk-president .name { font-weight:400; color:#275e58; }
@@ -61,29 +127,36 @@
     .wk-main-speaker { text-align:center; color:#165a56; font-size:clamp(1.8rem,2.4vw,2.6rem); margin:12px 0 6px; }
     .wk-main-sub { text-align:center; color:#2d6963; font-size:clamp(1.25rem,1.8vw,1.8rem); margin:0 0 14px; }
     .wk-watch-title { text-align:center; color:#ab1a23; font-size:clamp(2.4rem,4vw,3.5rem); font-weight:800; line-height:1.13; margin:22px auto 12px; }
-    .wk-watch-conductor { text-align:center; color:#8c1820; font-size:clamp(1.7rem,2.2vw,2.3rem); margin:8px 0 20px; }
+    .wk-watch-conductor { text-align:center; color:#8c1820; font-size:clamp(1.7rem,2.2vw,2.3rem); margin:8px 0 4px; }
+    .wk-watch-lector { text-align:center; color:#8c1820; font-size:clamp(1.1rem,1.6vw,1.35rem); margin:2px 0 18px; }
     .wk-foot-song { text-align:right; color:var(--green); font-size:clamp(1.2rem,1.4vw,1.5rem); font-weight:800; margin-top:10px; }
     .wk-cleaning { text-align:right; color:var(--green); font-size:clamp(2rem,2.8vw,3rem); font-weight:900; margin-top:10px; }
+    .wk-support { margin-top:10px; color:var(--green); font-size:clamp(1rem,1.25vw,1.12rem); font-weight:700; }
+    .wk-support div { margin:3px 0; }
+    .wk-support span { font-weight:400; color:#163d3a; margin-left:6px; }
 
+    /* PREDICACIÓN */
     .pred-wrap { display:grid; gap:14px; }
-    .pred-next { display:none; }
+    .pred-next { background:linear-gradient(135deg,#fff,#f2f7f6); border:1px solid #d3dfdc; border-radius:20px; padding:18px; box-shadow:0 2px 10px rgba(0,0,0,.05); }
     .pred-next-label { font-size:15px; font-weight:900; letter-spacing:.05em; text-transform:uppercase; color:var(--green); margin-bottom:10px; }
     .pred-next-head { display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:flex-start; }
     .pred-dayline { font-size:clamp(1.25rem,1.9vw,1.7rem); font-weight:800; color:#0f3c37; }
     .pred-hours { margin-top:4px; color:var(--muted); font-size:1rem; }
     .pred-chip { display:inline-block; padding:7px 14px; border-radius:999px; color:#fff; font-size:.9rem; font-weight:800; box-shadow:0 1px 4px rgba(0,0,0,.12); }
-    .pred-chip.manana { background:var(--daychip); color:#2b2400; } .pred-chip.noche { background:var(--night); }
+    .pred-chip.manana { background:var(--daychip); color:#2b2400; }
+    .pred-chip.noche { background:var(--night); }
     .pred-next-body { margin-top:14px; display:grid; gap:10px; }
     .pred-point-big { font-size:1.22rem; font-weight:900; color:var(--green); line-height:1.15; }
     .pred-conductor { font-size:1rem; font-weight:600; color:#22353a; }
     .pred-territory-line { font-size:.96rem; font-weight:700; color:#22353a; }
+
     .pred-program { background:#fff; border:1px solid #d8e0de; border-radius:20px; overflow:hidden; box-shadow:0 2px 10px rgba(0,0,0,.04); }
     .pred-program-head { padding:16px; border-bottom:1px solid #e2e8e6; }
     .pred-program-title { font-size:1.2rem; font-weight:800; color:#113d37; }
     .pred-week-label { margin-top:4px; font-size:.95rem; color:var(--muted); font-weight:700; }
     .pred-days { display:grid; gap:12px; padding:12px; }
     .pred-day-card { background:#fff; border:1px solid #d7e1de; border-radius:18px; overflow:hidden; }
-    .pred-day-head { background:var(--daybg); color:#fff; padding:14px 14px 12px; text-align:center; }
+    .pred-day-head { background:var(--green); color:#fff; padding:14px 14px 12px; text-align:center; }
     .pred-day-name { font-size:1.3rem; font-weight:900; letter-spacing:.03em; }
     .pred-day-grid { display:grid; grid-template-columns:1fr 1fr; }
     .pred-shift-col { padding:14px; min-height:120px; }
@@ -96,6 +169,7 @@
     .pred-shift-note { display:inline-block; margin-top:8px; background:var(--chip); color:#33444a; border-radius:999px; padding:6px 10px; font-size:.88rem; font-weight:700; }
     .pred-empty { color:var(--muted); font-size:.95rem; font-style:italic; padding-top:8px; }
 
+    /* MAPA */
     .pdf-wrap { width:100%; height:calc(100vh - 110px); min-height:78vh; background:var(--pdf-bg); border:1px solid var(--border); border-radius:18px; overflow:hidden; box-shadow:0 2px 10px rgba(0,0,0,.06); }
     .pdf-frame { width:100%; height:100%; border:none; background:var(--pdf-bg); }
 
@@ -103,6 +177,8 @@
       .pred-day-grid { grid-template-columns:1fr; }
       .pred-shift-col + .pred-shift-col { border-left:none; border-top:1px solid #e6ecea; }
       .wk-body { padding:14px 18px 20px; }
+      .wk-main-title { font-size:clamp(2.2rem,7vw,3.15rem); }
+      .wk-watch-title { font-size:clamp(2rem,6vw,2.9rem); }
     }
     @media (max-width:640px) {
       body { padding:0; }
@@ -110,12 +186,26 @@
       .card,.pred-program,.pdf-wrap,.pred-next,.wk-card { border-left:none; border-right:none; box-shadow:none; border-radius:0; }
       .pred-program-head,.pred-days { padding-left:16px; padding-right:16px; }
       .pdf-wrap { height:calc(100vh - 86px); min-height:calc(100vh - 86px); }
-      .head-nav { grid-template-columns:38px 1fr 38px; gap:6px; }
+      .head-nav, .wk-date-nav { grid-template-columns:38px 1fr 38px; gap:6px; }
       .nav-arrow { width:38px; height:38px; font-size:18px; }
       .head-title { font-size:1rem; }
+      .wk-date-title { font-size:1.9rem; }
+    }
+    @media (max-width:470px) {
+      .meeting-tab {
+        min-height:40px;
+        font-size:12px;
+        padding:8px 4px;
+      }
+      .meeting-tab.wrap-two { white-space:normal; }
+      .meeting-tab.wrap-two .topline,
+      .meeting-tab.wrap-two .bottomline {
+        display:block;
+        margin:0;
+      }
+      .meeting-tab.wrap-two .bottomline { font-size:.94em; }
     }
     @media (max-width:420px) {
-      .meeting-tab { font-size:10px; padding:9px 4px; }
       .pred-day-name { font-size:1.15rem; }
       .pred-dayline { font-size:1.18rem; }
     }
@@ -126,8 +216,8 @@
     <div class="meeting-menu" role="tablist" aria-label="Tipo de reunión">
       <button class="meeting-tab active" data-view="predicacion" type="button">PREDICACIÓN</button>
       <button class="meeting-tab" data-view="territorio" type="button">MAPA</button>
-      <button class="meeting-tab" data-view="entresemana" type="button">VIDA Y MINISTERIO</button>
-      <button class="meeting-tab" data-view="findesemana" type="button">CONFERENCIA Y ATALAYA</button>
+      <button class="meeting-tab wrap-two" data-view="entresemana" type="button"><span class="topline">VIDA Y</span><span class="bottomline">MINISTERIO</span></button>
+      <button class="meeting-tab wrap-two" data-view="findesemana" type="button"><span class="topline">CONFERENCIA</span><span class="bottomline">Y ATALAYA</span></button>
     </div>
     <div class="loading-state" id="loading">Cargando roles…</div>
     <div class="view hidden" id="view-entresemana"></div>
@@ -135,9 +225,11 @@
     <div class="view active hidden" id="view-predicacion"></div>
     <div class="view hidden" id="view-territorio"></div>
   </div>
+
   <script>
     const API_URL = 'https://script.google.com/macros/s/AKfycbxCzMZ59Y4rEC8mR0_eqA3_yxDT1OXRC33CqsIUFgBqu92oDBkV-5V7rzD614NSa7cIhw/exec';
     const TERRITORY_PDF = './TERRITORIO%20FLORES%20VIOLETAS%202025.pdf#toolbar=1&navpanes=0&view=FitH';
+
     const tabs = Array.from(document.querySelectorAll('.meeting-tab'));
     const views = {
       entresemana: document.getElementById('view-entresemana'),
@@ -148,6 +240,8 @@
 
     let midweekWeeks = [];
     let midweekIndex = 0;
+    let weekendWeeks = [];
+    let weekendIndex = 0;
 
     function activate(viewName) {
       const valid = views[viewName] ? viewName : 'predicacion';
@@ -159,45 +253,76 @@
     tabs.forEach(tab => tab.addEventListener('click', () => activate(tab.dataset.view)));
 
     function esc(v) {
-      return String(v ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+      return String(v ?? '')
+        .replace(/&/g,'&amp;')
+        .replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;')
+        .replace(/\"/g,'&quot;')
+        .replace(/'/g,'&#039;');
     }
+
     function showLoading(isLoading) {
       document.getElementById('loading').classList.toggle('hidden', !isLoading);
       Object.values(views).forEach(el => el.classList.toggle('hidden', isLoading));
     }
+
     function showApiError(message, detail='') {
       showLoading(false);
-      views.predicacion.innerHTML = renderPreaching({hasData:false,items:[]});
+      views.predicacion.innerHTML = renderPreaching({ hasData:false, items:[] });
       views.territorio.innerHTML = renderTerritorio();
       views.entresemana.innerHTML = `<div class="error-state"><strong>${esc(message)}</strong>${detail ? `<small>${esc(detail)}</small>` : ''}</div>`;
-      views.findesemana.innerHTML = '';
+      views.findesemana.innerHTML = `<div class="error-state"><strong>${esc(message)}</strong>${detail ? `<small>${esc(detail)}</small>` : ''}</div>`;
       activate('predicacion');
     }
+
     function loadData() {
-      if (!API_URL) { showApiError('Falta configurar la URL del API.'); return; }
+      if (!API_URL) {
+        showApiError('Falta configurar la URL del API.');
+        return;
+      }
       showLoading(true);
       const callbackName = '__rolesPrefix_' + Date.now();
       const separator = API_URL.includes('?') ? '&' : '?';
       const src = `${API_URL}${separator}prefix=${callbackName}&_ts=${Date.now()}`;
       const script = document.createElement('script');
-      script.src = src; script.async = true;
-      const timeout = setTimeout(() => { cleanup(); showApiError('No se pudo cargar el API.','Se agotó el tiempo de espera.'); }, 15000);
-      function cleanup() { clearTimeout(timeout); delete window[callbackName]; if (script.parentNode) script.parentNode.removeChild(script); }
+      script.src = src;
+      script.async = true;
+
+      const timeout = setTimeout(() => {
+        cleanup();
+        showApiError('No se pudo cargar el API.','Se agotó el tiempo de espera. Revisa que Apps Script siga devolviendo JSONP.');
+      }, 15000);
+
+      function cleanup() {
+        clearTimeout(timeout);
+        delete window[callbackName];
+        if (script.parentNode) script.parentNode.removeChild(script);
+      }
+
       window[callbackName] = function(data) {
         cleanup();
-        if (!data || data.ok !== true) { showApiError('El API respondió con datos inválidos.', JSON.stringify(data || {})); return; }
-        renderAll(data); showLoading(false);
+        if (!data || data.ok !== true) {
+          showApiError('El API respondió con datos inválidos.', JSON.stringify(data || {}));
+          return;
+        }
+        renderAll(data);
+        showLoading(false);
         const requested = (location.hash || '').replace('#','').trim().toLowerCase();
         activate(requested || 'predicacion');
       };
-      script.onerror = function() { cleanup(); showApiError('Error al cargar el API.','La URL respondió con error.'); };
+
+      script.onerror = function() {
+        cleanup();
+        showApiError('Error al cargar el API.','La URL respondió con error o Apps Script devolvió una página distinta a JavaScript.');
+      };
+
       document.body.appendChild(script);
     }
 
     function renderAll(data) {
-      renderMidweek(data.entresemana || {hasData:false,weeks:[]});
-      views.findesemana.innerHTML = renderWeekend(data.findesemana || {hasData:false});
-      views.predicacion.innerHTML = renderPreaching(data.predicacion || {hasData:false,items:[]});
+      initMidweek(data.entresemana || { hasData:false, weeks:[] });
+      initWeekend(data.findesemana || { hasData:false, weeks:[] });
+      views.predicacion.innerHTML = renderPreaching(data.predicacion || { hasData:false, items:[] });
       views.territorio.innerHTML = renderTerritorio();
     }
 
@@ -210,14 +335,15 @@
         </div>`).join('');
     }
 
-    function renderMidweek(data) {
+    function initMidweek(data) {
       if (!data || !data.hasData || !Array.isArray(data.weeks) || !data.weeks.length) {
         views.entresemana.innerHTML = '<div class="empty-state">No hay datos cargados para <strong>Vida y Ministerio</strong>.</div>';
         return;
       }
       midweekWeeks = data.weeks.slice();
-      const idx = Math.max(0, midweekWeeks.findIndex(w => w.weekKey === data.currentWeekKey));
-      midweekIndex = idx >= 0 ? idx : 0;
+      let idx = midweekWeeks.findIndex(w => w.weekKey === data.currentWeekKey);
+      if (idx < 0) idx = 0;
+      midweekIndex = idx;
       paintCurrentMidweekWeek();
     }
 
@@ -252,23 +378,72 @@
       if (next) next.onclick = () => { if (midweekIndex < midweekWeeks.length - 1) { midweekIndex++; paintCurrentMidweekWeek(); } };
     }
 
-    function renderWeekend(d) {
-      if (!d || !d.hasData) return '<div class="empty-state">No hay datos cargados para <strong>Conferencia y Atalaya</strong>.</div>';
-      return `
-        <div class="wk-wrap"><div class="wk-card"><div class="wk-date">${esc(d.headerTitle || '')}</div><div class="wk-body">
-          ${d.president ? `<div class="wk-president">PRESIDENTE: <span class="name">${esc(d.president)}</span></div>` : ''}
-          ${d.publicTalk ? `<div class="wk-band wk-green-band"><div class="wk-band-left"><div class="wk-icon-box"><svg viewBox="0 0 64 36" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="36" fill="#0b6e63"/><path d="M7 23 C12 20,17 20,22 22 C26 18,38 18,42 22 C47 20,52 20,57 23 L57 24 C52 23,47 23,42 25 C38 21,26 21,22 25 C17 23,12 23,7 24 Z" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round"/><path d="M29 12 L35 12" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg></div><div class="wk-band-title">DISCURSO PÚBLICO</div></div>${d.publicTalk.song ? `<div class="wk-band-song">Canción ${esc(d.publicTalk.song)}</div>` : ''}</div><div class="wk-main-title">“${esc(d.publicTalk.title || '')}”</div>${d.publicTalk.speaker ? `<div class="wk-main-speaker">${esc(d.publicTalk.speaker)}</div>` : ''}${d.publicTalk.subtitle ? `<div class="wk-main-sub">${esc(d.publicTalk.subtitle)}</div>` : ''}` : ''}
-          ${d.watchtower ? `<div class="wk-band wk-red-band"><div class="wk-band-left"><div class="wk-icon-box"><svg viewBox="0 0 64 36" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="36" fill="#b11f29"/><path d="M14 27 V13 L20 10 V27" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round"/><path d="M20 10 H30 L30 13" fill="none" stroke="#fff" stroke-width="2"/><path d="M28 13 H38 V17" fill="none" stroke="#fff" stroke-width="2"/><path d="M36 17 H46 V22" fill="none" stroke="#fff" stroke-width="2"/></svg></div><div class="wk-band-title">REUNIÓN LA ATALAYA</div></div>${d.watchtower.song ? `<div class="wk-band-song">Canción ${esc(d.watchtower.song)}</div>` : ''}</div><div class="wk-watch-title">“${esc(d.watchtower.title || '')}”</div>${d.watchtower.conductor ? `<div class="wk-watch-conductor">${esc(d.watchtower.conductor)}</div>` : ''}` : ''}
-          ${d.closingSong ? `<div class="wk-foot-song">Canción ${esc(d.closingSong)}</div>` : ''}
-          ${d.cleaningLabel ? `<div class="wk-cleaning">${esc(d.cleaningLabel)}</div>` : ''}
-        </div></div></div>`;
+    function initWeekend(data) {
+      if (!data || !data.hasData || !Array.isArray(data.weeks) || !data.weeks.length) {
+        views.findesemana.innerHTML = '<div class="empty-state">No hay datos cargados para <strong>Conferencia y Atalaya</strong>.</div>';
+        return;
+      }
+      weekendWeeks = data.weeks.slice();
+      let idx = weekendWeeks.findIndex(w => w.weekKey === data.currentWeekKey);
+      if (idx < 0) idx = 0;
+      weekendIndex = idx;
+      paintCurrentWeekendWeek();
+    }
+
+    function supportLine(label, value) {
+      return value ? `<div>${label}:<span>${esc(value)}</span></div>` : '';
+    }
+
+    function paintCurrentWeekendWeek() {
+      const d = weekendWeeks[weekendIndex];
+      if (!d) return;
+      views.findesemana.innerHTML = `
+        <div class="wk-wrap">
+          <div class="wk-card">
+            <div class="wk-date">
+              <div class="wk-date-nav">
+                <button class="nav-arrow" id="wk-prev" ${weekendIndex === 0 ? 'disabled' : ''}>◀</button>
+                <div class="wk-date-title">${esc(d.headerTitle || '')}</div>
+                <button class="nav-arrow" id="wk-next" ${weekendIndex === weekendWeeks.length - 1 ? 'disabled' : ''}>▶</button>
+              </div>
+            </div>
+            <div class="wk-body">
+              ${d.president ? `<div class="wk-president">PRESIDENTE: <span class="name">${esc(d.president)}</span></div>` : ''}
+              ${d.publicTalk ? `<div class="wk-band wk-green-band"><div class="wk-band-left"><div class="wk-icon-box"><svg viewBox="0 0 64 36" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="36" fill="#0b6e63"/><path d="M7 23 C12 20,17 20,22 22 C26 18,38 18,42 22 C47 20,52 20,57 23 L57 24 C52 23,47 23,42 25 C38 21,26 21,22 25 C17 23,12 23,7 24 Z" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round"/><path d="M29 12 L35 12" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg></div><div class="wk-band-title">DISCURSO PÚBLICO</div></div>${d.publicTalk.song ? `<div class="wk-band-song">Canción ${esc(d.publicTalk.song)}</div>` : ''}</div><div class="wk-main-title">“${esc(d.publicTalk.title || '')}”</div>${d.publicTalk.speaker ? `<div class="wk-main-speaker">${esc(d.publicTalk.speaker)}</div>` : ''}${d.publicTalk.subtitle ? `<div class="wk-main-sub">${esc(d.publicTalk.subtitle)}</div>` : ''}` : ''}
+              ${d.watchtower ? `<div class="wk-band wk-red-band"><div class="wk-band-left"><div class="wk-icon-box"><svg viewBox="0 0 64 36" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="36" fill="#b11f29"/><path d="M14 27 V13 L20 10 V27" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round"/><path d="M20 10 H30 L30 13" fill="none" stroke="#fff" stroke-width="2"/><path d="M28 13 H38 V17" fill="none" stroke="#fff" stroke-width="2"/><path d="M36 17 H46 V22" fill="none" stroke="#fff" stroke-width="2"/></svg></div><div class="wk-band-title">REUNIÓN LA ATALAYA</div></div>${d.watchtower.song ? `<div class="wk-band-song">Canción ${esc(d.watchtower.song)}</div>` : ''}</div><div class="wk-watch-title">“${esc(d.watchtower.title || '')}”</div>${d.watchtower.conductor ? `<div class="wk-watch-conductor">${esc(d.watchtower.conductor)}</div>` : ''}${d.watchtower.lector ? `<div class="wk-watch-lector">Lector: ${esc(d.watchtower.lector)}</div>` : ''}` : ''}
+              ${d.closingSong ? `<div class="wk-foot-song">Canción ${esc(d.closingSong)}</div>` : ''}
+              ${d.cleaningLabel ? `<div class="wk-cleaning">${esc(d.cleaningLabel)}</div>` : ''}
+              <div class="wk-support">
+                ${supportLine('Acomodadores', d.support && d.support.acomodadores)}
+                ${supportLine('Micrófonos', d.support && d.support.microfonos)}
+                ${supportLine('Hospitalidad', d.support && d.support.hospitalidad)}
+              </div>
+            </div>
+          </div>
+        </div>`;
+      const prev = document.getElementById('wk-prev');
+      const next = document.getElementById('wk-next');
+      if (prev) prev.onclick = () => { if (weekendIndex > 0) { weekendIndex--; paintCurrentWeekendWeek(); } };
+      if (next) next.onclick = () => { if (weekendIndex < weekendWeeks.length - 1) { weekendIndex++; paintCurrentWeekendWeek(); } };
     }
 
     const DAY_ORDER = ['lunes','martes','miercoles','jueves','viernes','sabado','domingo'];
     const DAY_LABEL = { lunes:'Lunes', martes:'Martes', miercoles:'Miércoles', jueves:'Jueves', viernes:'Viernes', sabado:'Sábado', domingo:'Domingo' };
-    function normText(v) { return String(v ?? '').normalize('NFD').replace(/[̀-ͯ]/g,'').trim().toLowerCase(); }
-    function toMinutes(hhmm) { if (!hhmm) return null; const p = String(hhmm).split(':'); if (p.length < 2) return null; const h = Number(p[0]), m = Number(p[1]); if (Number.isNaN(h) || Number.isNaN(m)) return null; return h*60 + m; }
-    function formatTimeRange(item) { if (item.horaTexto) return item.horaTexto; if (item.horaInicioTexto && item.horaFinTexto) return `${item.horaInicioTexto} - ${item.horaFinTexto}`; return ''; }
+    function normText(v) { return String(v ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase(); }
+    function toMinutes(hhmm) {
+      if (!hhmm) return null;
+      const p = String(hhmm).split(':');
+      if (p.length < 2) return null;
+      const h = Number(p[0]), m = Number(p[1]);
+      if (Number.isNaN(h) || Number.isNaN(m)) return null;
+      return h*60 + m;
+    }
+    function formatTimeRange(item) {
+      if (item.horaTexto) return item.horaTexto;
+      if (item.horaInicioTexto && item.horaFinTexto) return `${item.horaInicioTexto} - ${item.horaFinTexto}`;
+      return '';
+    }
+
     function preprocessPredication(raw) {
       const items = Array.isArray(raw.items) ? raw.items : [];
       return items.map((it, idx) => {
@@ -293,8 +468,15 @@
         };
       }).sort((a,b) => (a.fechaISO || '').localeCompare(b.fechaISO || '') || (a.horaInicio || '').localeCompare(b.horaInicio || ''));
     }
-    function isMeetingBlock(it) { return normText(it.puntoReunion || '').includes('vida y ministerio'); }
-    function getPredChip(turnoNorm) { return `<span class="pred-chip ${turnoNorm === 'noche' ? 'noche' : 'manana'}">${turnoNorm === 'noche' ? 'Noche' : 'Mañana'}</span>`; }
+
+    function isMeetingBlock(it) {
+      return normText(it.puntoReunion || '').includes('vida y ministerio');
+    }
+
+    function getPredChip(turnoNorm) {
+      return `<span class="pred-chip ${turnoNorm === 'noche' ? 'noche' : 'manana'}">${turnoNorm === 'noche' ? 'Noche' : 'Mañana'}</span>`;
+    }
+
     function getHeadline(items) {
       if (!items.length) return null;
       const now = new Date();
@@ -307,6 +489,7 @@
       const future = items.find(it => (it.fechaISO || '') > todayISO || ((it.fechaISO || '') === todayISO && it.horaInicio && mins < toMinutes(it.horaInicio)));
       return { mode:'proximo', item: future || items[0] };
     }
+
     function renderPredShift(it) {
       if (!it) return '<div class="pred-empty">Sin turno</div>';
       const meeting = isMeetingBlock(it);
@@ -317,20 +500,36 @@
         ${!meeting && it.territorio ? `<div class="pred-shift-territory">Territorio: ${esc(it.territorio)}</div>` : ''}
         ${!meeting && it.notas ? `<span class="pred-shift-note">${esc(it.notas)}</span>` : ''}`;
     }
+
     function renderPreaching(d) {
-      const items = preprocessPredication(d || {hasData:false,items:[]});
+      const items = preprocessPredication(d || { hasData:false, items:[] });
       const weekLabel = d && d.semanaTexto ? d.semanaTexto : '';
       const headline = getHeadline(items);
       const top = headline ? (() => {
-        const it = headline.item; const meeting = isMeetingBlock(it);
+        const it = headline.item;
+        const meeting = isMeetingBlock(it);
         return `<div class="pred-next"><div class="pred-next-label">${headline.mode === 'activo' ? 'Turno actual' : 'Próxima predicación'}</div><div class="pred-next-head"><div><div class="pred-dayline">${esc(it.dia || '')}</div><div class="pred-hours">${esc(formatTimeRange(it))}</div></div>${getPredChip(it.turnoNorm)}</div><div class="pred-next-body"><div class="pred-point-big">${esc(it.puntoReunion || 'Sin definir')}</div>${!meeting && it.conductor ? `<div class="pred-conductor">${esc(it.conductor)}</div>` : ''}${!meeting && it.territorio ? `<div class="pred-territory-line">Territorio: ${esc(it.territorio)}</div>` : ''}${!meeting && it.notas ? `<span class="pred-shift-note">${esc(it.notas)}</span>` : ''}</div></div>`;
       })() : `<div class="pred-next"><div class="pred-next-label">Próxima predicación</div><div class="empty-state">No hay turnos cargados todavía.</div></div>`;
+
       const grouped = Object.fromEntries(DAY_ORDER.map(day => [day, { manana:null, noche:null }]));
-      items.forEach(it => { if (!grouped[it.diaNorm]) return; if (it.turnoNorm === 'mañana') grouped[it.diaNorm].manana = it; if (it.turnoNorm === 'noche') grouped[it.diaNorm].noche = it; });
-      const daysHtml = DAY_ORDER.map(day => { const g = grouped[day]; return `<div class="pred-day-card"><div class="pred-day-head"><div class="pred-day-name">${DAY_LABEL[day]}</div></div><div class="pred-day-grid"><div class="pred-shift-col">${renderPredShift(g.manana)}</div><div class="pred-shift-col">${renderPredShift(g.noche)}</div></div></div>`; }).join('');
+      items.forEach(it => {
+        if (!grouped[it.diaNorm]) return;
+        if (it.turnoNorm === 'mañana') grouped[it.diaNorm].manana = it;
+        if (it.turnoNorm === 'noche') grouped[it.diaNorm].noche = it;
+      });
+
+      const daysHtml = DAY_ORDER.map(day => {
+        const g = grouped[day];
+        return `<div class="pred-day-card"><div class="pred-day-head"><div class="pred-day-name">${DAY_LABEL[day]}</div></div><div class="pred-day-grid"><div class="pred-shift-col">${renderPredShift(g.manana)}</div><div class="pred-shift-col">${renderPredShift(g.noche)}</div></div></div>`;
+      }).join('');
+
       return `<div class="pred-wrap">${top}<div class="pred-program"><div class="pred-program-head"><div><div class="pred-program-title">Programa completo de predicación</div>${weekLabel ? `<div class="pred-week-label">${esc(weekLabel)}</div>` : ''}</div></div><div class="pred-days">${daysHtml || '<div class="empty-state">No hay turnos de predicación cargados todavía.</div>'}</div></div></div>`;
     }
-    function renderTerritorio() { return `<div class="pdf-wrap"><iframe class="pdf-frame" src="${TERRITORY_PDF}" title="Mapa territorio"></iframe></div>`; }
+
+    function renderTerritorio() {
+      return `<div class="pdf-wrap"><iframe class="pdf-frame" src="${TERRITORY_PDF}" title="Mapa territorio"></iframe></div>`;
+    }
+
     loadData();
   </script>
 </body>
