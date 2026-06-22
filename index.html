@@ -88,8 +88,10 @@
     .pred-day-grid { display:grid; grid-template-columns:1fr 1fr; }
     .pred-shift-col { padding:14px; min-height:120px; }
     .pred-shift-col + .pred-shift-col { border-left:1px solid #e6ecea; }
+    .pred-shift-group { display:grid; gap:10px; }
     .pred-shift-top { display:flex; justify-content:space-between; gap:8px; margin-bottom:8px; }
     .pred-shift-time { font-size:.95rem; font-weight:800; color:#22353a; }
+    .pred-entry + .pred-entry { border-top:1px solid #e6ecea; padding-top:10px; }
     .pred-shift-point { font-size:1.06rem; font-weight:900; color:var(--green); line-height:1.18; }
     .pred-shift-conductor { margin-top:6px; font-size:.95rem; color:#22353a; font-weight:600; }
     .pred-shift-territory { margin-top:8px; font-size:.93rem; color:#22353a; font-weight:700; }
@@ -151,30 +153,165 @@
     const tabs = Array.from(document.querySelectorAll('.meeting-tab'));
     const views = { entresemana: document.getElementById('view-entresemana'), findesemana: document.getElementById('view-findesemana'), predicacion: document.getElementById('view-predicacion'), territorio: document.getElementById('view-territorio') };
     let midweekWeeks = []; let midweekIndex = 0; let weekendWeeks = []; let weekendIndex = 0;
-    function activate(viewName) { const valid = views[viewName] ? viewName : 'predicacion'; tabs.forEach(tab => tab.classList.toggle('active', tab.dataset.view === valid)); Object.keys(views).forEach(key => views[key].classList.toggle('active', key === valid)); if (location.hash !== '#' + valid) history.replaceState(null, '', '#' + valid); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+
+    function activate(viewName) {
+      const valid = views[viewName] ? viewName : 'predicacion';
+      tabs.forEach(tab => tab.classList.toggle('active', tab.dataset.view === valid));
+      Object.keys(views).forEach(key => views[key].classList.toggle('active', key === valid));
+      if (location.hash !== '#' + valid) history.replaceState(null, '', '#' + valid);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
     tabs.forEach(tab => tab.addEventListener('click', () => activate(tab.dataset.view)));
     function esc(v) { return String(v ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\"/g,'&quot;').replace(/'/g,'&#039;'); }
     function showLoading(isLoading) { document.getElementById('loading').classList.toggle('hidden', !isLoading); Object.values(views).forEach(el => el.classList.toggle('hidden', isLoading)); }
-    function showApiError(message, detail='') { showLoading(false); views.predicacion.innerHTML = renderPreaching({ hasData:false, items:[] }); views.territorio.innerHTML = renderTerritorio(); views.entresemana.innerHTML = `<div class="error-state"><strong>${esc(message)}</strong>${detail ? `<small>${esc(detail)}</small>` : ''}</div>`; views.findesemana.innerHTML = `<div class="error-state"><strong>${esc(message)}</strong>${detail ? `<small>${esc(detail)}</small>` : ''}</div>`; activate('predicacion'); }
-    function loadData() { if (!API_URL) { showApiError('Falta configurar la URL del API.'); return; } showLoading(true); const callbackName = '__rolesPrefix_' + Date.now(); const separator = API_URL.includes('?') ? '&' : '?'; const src = `${API_URL}${separator}prefix=${callbackName}&_ts=${Date.now()}`; const script = document.createElement('script'); script.src = src; script.async = true; const timeout = setTimeout(() => { cleanup(); showApiError('No se pudo cargar el API.','Se agotó el tiempo de espera.'); }, 15000); function cleanup() { clearTimeout(timeout); delete window[callbackName]; if (script.parentNode) script.parentNode.removeChild(script); } window[callbackName] = function(data) { cleanup(); if (!data || data.ok !== true) { showApiError('El API respondió con datos inválidos.', JSON.stringify(data || {})); return; } renderAll(data); showLoading(false); const requested = (location.hash || '').replace('#','').trim().toLowerCase(); activate(requested || 'predicacion'); }; script.onerror = function() { cleanup(); showApiError('Error al cargar el API.','La URL respondió con error.'); }; document.body.appendChild(script); }
-    function renderAll(data) { initMidweek(data.entresemana || { hasData:false, weeks:[] }); initWeekend(data.findesemana || { hasData:false, weeks:[] }); views.predicacion.innerHTML = renderPreaching(data.predicacion || { hasData:false, items:[] }); views.territorio.innerHTML = renderTerritorio(); }
-    function renderItemList(items, cls, lector='') { return (items || []).map(it => `<div class="item"><div class="item-title ${cls}">${it.number ? esc(it.number)+'. ' : ''}${esc(it.title || '')}</div>${it.names ? `<div class="item-person">${esc(it.names)}</div>` : ''}${it.isCongBibleStudy && lector ? `<div class="lector-below">Lector:<span class="lector-name"> ${esc(lector)}</span></div>` : ''}</div>`).join(''); }
-    function initMidweek(data) { if (!data || !data.hasData || !Array.isArray(data.weeks) || !data.weeks.length) { views.entresemana.innerHTML = '<div class="empty-state">No hay datos cargados para <strong>Vida y Ministerio</strong>.</div>'; return; } midweekWeeks = data.weeks.slice(); let idx = midweekWeeks.findIndex(w => w.weekKey === data.currentWeekKey); if (idx < 0) idx = 0; midweekIndex = idx; paintCurrentMidweekWeek(); }
-    function paintCurrentMidweekWeek() { const d = midweekWeeks[midweekIndex]; if (!d) return; views.entresemana.innerHTML = `<div class="card"><div class="head"><div class="head-nav"><button class="nav-arrow" id="mw-prev" ${midweekIndex === 0 ? 'disabled' : ''}>◀</button><div class="head-title">${esc(d.weekTitle || '')}</div><button class="nav-arrow" id="mw-next" ${midweekIndex === midweekWeeks.length - 1 ? 'disabled' : ''}>▶</button></div></div>${d.president ? `<div class="sub">Presidente: ${esc(d.president)}</div>` : ''}<div class="block"><div class="section-title s-blue">TESOROS DE LA BIBLIA ${d.openingSong ? `<span class="song">Canción ${esc(d.openingSong)}</span>` : ''}</div>${renderItemList(d.treasures, 'blue-t')}<div class="section-title s-gold">SEAMOS MEJORES MAESTROS</div>${renderItemList(d.teachers, 'gold-t')}<div class="section-title s-red">NUESTRA VIDA CRISTIANA ${d.middleSong ? `<span class="song">Canción ${esc(d.middleSong)}</span>` : ''}</div>${renderItemList(d.life, 'red-t', d.lector || '')}</div>${d.closingSong ? `<div class="footer-note">Palabras de conclusión y canción ${esc(d.closingSong)}</div>` : ''}${d.prayerName ? `<div class="footer-prayer">Oración conclusión&nbsp;&nbsp;${esc(d.prayerName)}</div>` : ''}${d.cleaningLabel ? `<div class="cleaning">${esc(d.cleaningLabel)}</div>` : ''}</div>`; const prev = document.getElementById('mw-prev'); const next = document.getElementById('mw-next'); if (prev) prev.onclick = () => { if (midweekIndex > 0) { midweekIndex--; paintCurrentMidweekWeek(); } }; if (next) next.onclick = () => { if (midweekIndex < midweekWeeks.length - 1) { midweekIndex++; paintCurrentMidweekWeek(); } }; }
-    function initWeekend(data) { if (!data || !data.hasData || !Array.isArray(data.weeks) || !data.weeks.length) { views.findesemana.innerHTML = '<div class="empty-state">No hay datos cargados para <strong>Conferencia y Atalaya</strong>.</div>'; return; } weekendWeeks = data.weeks.slice(); let idx = weekendWeeks.findIndex(w => w.weekKey === data.currentWeekKey); if (idx < 0) idx = 0; weekendIndex = idx; paintCurrentWeekendWeek(); }
+    function showApiError(message, detail='') {
+      showLoading(false);
+      views.predicacion.innerHTML = renderPreaching({ hasData:false, items:[] });
+      views.territorio.innerHTML = renderTerritorio();
+      views.entresemana.innerHTML = `<div class="error-state"><strong>${esc(message)}</strong>${detail ? `<small>${esc(detail)}</small>` : ''}</div>`;
+      views.findesemana.innerHTML = `<div class="error-state"><strong>${esc(message)}</strong>${detail ? `<small>${esc(detail)}</small>` : ''}</div>`;
+      activate('predicacion');
+    }
+    function loadData() {
+      if (!API_URL) { showApiError('Falta configurar la URL del API.'); return; }
+      showLoading(true);
+      const callbackName = '__rolesPrefix_' + Date.now();
+      const separator = API_URL.includes('?') ? '&' : '?';
+      const src = `${API_URL}${separator}prefix=${callbackName}&_ts=${Date.now()}`;
+      const script = document.createElement('script'); script.src = src; script.async = true;
+      const timeout = setTimeout(() => { cleanup(); showApiError('No se pudo cargar el API.','Se agotó el tiempo de espera.'); }, 15000);
+      function cleanup() { clearTimeout(timeout); delete window[callbackName]; if (script.parentNode) script.parentNode.removeChild(script); }
+      window[callbackName] = function(data) {
+        cleanup();
+        if (!data || data.ok !== true) { showApiError('El API respondió con datos inválidos.', JSON.stringify(data || {})); return; }
+        renderAll(data); showLoading(false);
+        const requested = (location.hash || '').replace('#','').trim().toLowerCase();
+        activate(requested || 'predicacion');
+      };
+      script.onerror = function() { cleanup(); showApiError('Error al cargar el API.','La URL respondió con error.'); };
+      document.body.appendChild(script);
+    }
+    function renderAll(data) {
+      initMidweek(data.entresemana || { hasData:false, weeks:[] });
+      initWeekend(data.findesemana || { hasData:false, weeks:[] });
+      views.predicacion.innerHTML = renderPreaching(data.predicacion || { hasData:false, items:[] });
+      views.territorio.innerHTML = renderTerritorio();
+    }
+    function renderItemList(items, cls, lector='') {
+      return (items || []).map(it => `<div class="item"><div class="item-title ${cls}">${it.number ? esc(it.number)+'. ' : ''}${esc(it.title || '')}</div>${it.names ? `<div class="item-person">${esc(it.names)}</div>` : ''}${it.isCongBibleStudy && lector ? `<div class="lector-below">Lector:<span class="lector-name"> ${esc(lector)}</span></div>` : ''}</div>`).join('');
+    }
+    function initMidweek(data) {
+      if (!data || !data.hasData || !Array.isArray(data.weeks) || !data.weeks.length) { views.entresemana.innerHTML = '<div class="empty-state">No hay datos cargados para <strong>Vida y Ministerio</strong>.</div>'; return; }
+      midweekWeeks = data.weeks.slice(); let idx = midweekWeeks.findIndex(w => w.weekKey === data.currentWeekKey); if (idx < 0) idx = 0; midweekIndex = idx; paintCurrentMidweekWeek();
+    }
+    function paintCurrentMidweekWeek() {
+      const d = midweekWeeks[midweekIndex]; if (!d) return;
+      views.entresemana.innerHTML = `<div class="card"><div class="head"><div class="head-nav"><button class="nav-arrow" id="mw-prev" ${midweekIndex === 0 ? 'disabled' : ''}>◀</button><div class="head-title">${esc(d.weekTitle || '')}</div><button class="nav-arrow" id="mw-next" ${midweekIndex === midweekWeeks.length - 1 ? 'disabled' : ''}>▶</button></div></div>${d.president ? `<div class="sub">Presidente: ${esc(d.president)}</div>` : ''}<div class="block"><div class="section-title s-blue">TESOROS DE LA BIBLIA ${d.openingSong ? `<span class="song">Canción ${esc(d.openingSong)}</span>` : ''}</div>${renderItemList(d.treasures, 'blue-t')}<div class="section-title s-gold">SEAMOS MEJORES MAESTROS</div>${renderItemList(d.teachers, 'gold-t')}<div class="section-title s-red">NUESTRA VIDA CRISTIANA ${d.middleSong ? `<span class="song">Canción ${esc(d.middleSong)}</span>` : ''}</div>${renderItemList(d.life, 'red-t', d.lector || '')}</div>${d.closingSong ? `<div class="footer-note">Palabras de conclusión y canción ${esc(d.closingSong)}</div>` : ''}${d.prayerName ? `<div class="footer-prayer">Oración conclusión&nbsp;&nbsp;${esc(d.prayerName)}</div>` : ''}${d.cleaningLabel ? `<div class="cleaning">${esc(d.cleaningLabel)}</div>` : ''}</div>`;
+      const prev = document.getElementById('mw-prev'); const next = document.getElementById('mw-next');
+      if (prev) prev.onclick = () => { if (midweekIndex > 0) { midweekIndex--; paintCurrentMidweekWeek(); } };
+      if (next) next.onclick = () => { if (midweekIndex < midweekWeeks.length - 1) { midweekIndex++; paintCurrentMidweekWeek(); } };
+    }
+    function initWeekend(data) {
+      if (!data || !data.hasData || !Array.isArray(data.weeks) || !data.weeks.length) { views.findesemana.innerHTML = '<div class="empty-state">No hay datos cargados para <strong>Conferencia y Atalaya</strong>.</div>'; return; }
+      weekendWeeks = data.weeks.slice(); let idx = weekendWeeks.findIndex(w => w.weekKey === data.currentWeekKey); if (idx < 0) idx = 0; weekendIndex = idx; paintCurrentWeekendWeek();
+    }
     function supportLine(label, value) { return value ? `<div>${label}:<span>${esc(value)}</span></div>` : ''; }
-    function paintCurrentWeekendWeek() { const d = weekendWeeks[weekendIndex]; if (!d) return; views.findesemana.innerHTML = `<div class="wk-wrap"><div class="wk-card"><div class="wk-date"><div class="wk-date-nav"><button class="nav-arrow" id="wk-prev" ${weekendIndex === 0 ? 'disabled' : ''}>◀</button><div class="wk-date-title">${esc(d.headerTitle || '')}</div><button class="nav-arrow" id="wk-next" ${weekendIndex === weekendWeeks.length - 1 ? 'disabled' : ''}>▶</button></div></div><div class="wk-body">${d.president ? `<div class="wk-president">PRESIDENTE: <span class="name">${esc(d.president)}</span></div>` : ''}${d.publicTalk ? `<div class="wk-band wk-green-band"><div class="wk-band-left"><div class="wk-band-title">DISCURSO PÚBLICO</div></div>${d.publicTalk.song ? `<div class="wk-band-song">Canción ${esc(d.publicTalk.song)}</div>` : ''}</div><div class="wk-main-title">“${esc(d.publicTalk.title || '')}”</div>${d.publicTalk.speaker ? `<div class="wk-main-speaker">${esc(d.publicTalk.speaker)}</div>` : ''}${d.publicTalk.subtitle ? `<div class="wk-main-sub">${esc(d.publicTalk.subtitle)}</div>` : ''}` : ''}${d.watchtower ? `<div class="wk-band wk-red-band"><div class="wk-band-left"><div class="wk-band-title">REUNIÓN LA ATALAYA</div></div>${d.watchtower.song ? `<div class="wk-band-song">Canción ${esc(d.watchtower.song)}</div>` : ''}</div><div class="wk-watch-title">“${esc(d.watchtower.title || '')}”</div>${d.watchtower.conductor ? `<div class="wk-watch-conductor">${esc(d.watchtower.conductor)}</div>` : ''}${d.watchtower.lector ? `<div class="wk-watch-lector">Lector: ${esc(d.watchtower.lector)}</div>` : ''}` : ''}${d.closingSong ? `<div class="wk-foot-song">Canción ${esc(d.closingSong)}</div>` : ''}${d.cleaningLabel ? `<div class="wk-cleaning">${esc(d.cleaningLabel)}</div>` : ''}<div class="wk-support">${supportLine('Acomodadores', d.support && d.support.acomodadores)}${supportLine('Micrófonos', d.support && d.support.microfonos)}${supportLine('Hospitalidad', d.support && d.support.hospitalidad)}</div></div></div></div>`; const prev = document.getElementById('wk-prev'); const next = document.getElementById('wk-next'); if (prev) prev.onclick = () => { if (weekendIndex > 0) { weekendIndex--; paintCurrentWeekendWeek(); } }; if (next) next.onclick = () => { if (weekendIndex < weekendWeeks.length - 1) { weekendIndex++; paintCurrentWeekendWeek(); } }; }
+    function paintCurrentWeekendWeek() {
+      const d = weekendWeeks[weekendIndex]; if (!d) return;
+      views.findesemana.innerHTML = `<div class="wk-wrap"><div class="wk-card"><div class="wk-date"><div class="wk-date-nav"><button class="nav-arrow" id="wk-prev" ${weekendIndex === 0 ? 'disabled' : ''}>◀</button><div class="wk-date-title">${esc(d.headerTitle || '')}</div><button class="nav-arrow" id="wk-next" ${weekendIndex === weekendWeeks.length - 1 ? 'disabled' : ''}>▶</button></div></div><div class="wk-body">${d.president ? `<div class="wk-president">PRESIDENTE: <span class="name">${esc(d.president)}</span></div>` : ''}${d.publicTalk ? `<div class="wk-band wk-green-band"><div class="wk-band-left"><div class="wk-band-title">DISCURSO PÚBLICO</div></div>${d.publicTalk.song ? `<div class="wk-band-song">Canción ${esc(d.publicTalk.song)}</div>` : ''}</div><div class="wk-main-title">“${esc(d.publicTalk.title || '')}”</div>${d.publicTalk.speaker ? `<div class="wk-main-speaker">${esc(d.publicTalk.speaker)}</div>` : ''}${d.publicTalk.subtitle ? `<div class="wk-main-sub">${esc(d.publicTalk.subtitle)}</div>` : ''}` : ''}${d.watchtower ? `<div class="wk-band wk-red-band"><div class="wk-band-left"><div class="wk-band-title">REUNIÓN LA ATALAYA</div></div>${d.watchtower.song ? `<div class="wk-band-song">Canción ${esc(d.watchtower.song)}</div>` : ''}</div><div class="wk-watch-title">“${esc(d.watchtower.title || '')}”</div>${d.watchtower.conductor ? `<div class="wk-watch-conductor">${esc(d.watchtower.conductor)}</div>` : ''}${d.watchtower.lector ? `<div class="wk-watch-lector">Lector: ${esc(d.watchtower.lector)}</div>` : ''}` : ''}${d.closingSong ? `<div class="wk-foot-song">Canción ${esc(d.closingSong)}</div>` : ''}${d.cleaningLabel ? `<div class="wk-cleaning">${esc(d.cleaningLabel)}</div>` : ''}<div class="wk-support">${supportLine('Acomodadores', d.support && d.support.acomodadores)}${supportLine('Micrófonos', d.support && d.support.microfonos)}${supportLine('Hospitalidad', d.support && d.support.hospitalidad)}</div></div></div></div>`;
+      const prev = document.getElementById('wk-prev'); const next = document.getElementById('wk-next');
+      if (prev) prev.onclick = () => { if (weekendIndex > 0) { weekendIndex--; paintCurrentWeekendWeek(); } };
+      if (next) next.onclick = () => { if (weekendIndex < weekendWeeks.length - 1) { weekendIndex++; paintCurrentWeekendWeek(); } };
+    }
+
     const DAY_ORDER = ['lunes','martes','miercoles','jueves','viernes','sabado','domingo'];
     const DAY_LABEL = { lunes:'Lunes', martes:'Martes', miercoles:'Miércoles', jueves:'Jueves', viernes:'Viernes', sabado:'Sábado', domingo:'Domingo' };
     function normText(v) { return String(v ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase(); }
-    function toMinutes(hhmm) { if (!hhmm) return null; const p = String(hhmm).split(':'); if (p.length < 2) return null; const h = Number(p[0]), m = Number(p[1]); if (Number.isNaN(h) || Number.isNaN(m)) return null; return h*60 + m; }
+    function toMinutes(hhmm) {
+      if (!hhmm) return null; const p = String(hhmm).split(':'); if (p.length < 2) return null;
+      const h = Number(p[0]), m = Number(p[1]); if (Number.isNaN(h) || Number.isNaN(m)) return null; return h*60 + m;
+    }
     function formatTimeRange(item) { if (item.horaTexto) return item.horaTexto; if (item.horaInicioTexto && item.horaFinTexto) return `${item.horaInicioTexto} - ${item.horaFinTexto}`; return ''; }
-    function preprocessPredication(raw) { const items = Array.isArray(raw.items) ? raw.items : []; return items.map((it, idx) => { const start = toMinutes(it.horaInicio || ''); const shiftNorm = normText(it.turno || (start !== null && start < 720 ? 'Mañana' : 'Noche')); return { id: it.id || `p${idx}`, dia: it.dia || '', diaNorm: normText(it.dia || ''), fechaISO: it.fechaISO || it.fecha || '', turno: it.turno || (shiftNorm.includes('noche') ? 'Noche' : 'Mañana'), turnoNorm: shiftNorm.includes('noche') ? 'noche' : 'mañana', horaInicio: it.horaInicio || '', horaFin: it.horaFin || '', horaInicioTexto: it.horaInicioTexto || '', horaFinTexto: it.horaFinTexto || '', horaTexto: it.horaTexto || '', puntoReunion: it.puntoReunion || it.punto || '', conductor: it.conductor || '', territorio: it.territorio || '', notas: it.notas || '' }; }).sort((a,b) => (a.fechaISO || '').localeCompare(b.fechaISO || '') || (a.horaInicio || '').localeCompare(b.horaInicio || '')); }
+    function getGroupNumber(point) { const m = String(point || '').match(/grupo\s*(\d+)/i); return m ? Number(m[1]) : null; }
+    function isGroupPoint(point) { return getGroupNumber(point) !== null; }
+    function normalizeGroupLabel(point) { const n = getGroupNumber(point); return n === null ? (point || '') : `GRUPO ${n}`; }
+    function comparePredShiftItems(a, b) {
+      const ga = getGroupNumber(a.puntoReunion); const gb = getGroupNumber(b.puntoReunion);
+      if (ga !== null && gb !== null && ga !== gb) return ga - gb;
+      if (ga !== null && gb === null) return -1;
+      if (ga === null && gb !== null) return 1;
+      const ta = toMinutes(a.horaInicio || '') ?? 9999; const tb = toMinutes(b.horaInicio || '') ?? 9999;
+      if (ta !== tb) return ta - tb;
+      return String(a.puntoReunion || '').localeCompare(String(b.puntoReunion || ''));
+    }
+
+    function preprocessPredication(raw) {
+      const items = Array.isArray(raw.items) ? raw.items : [];
+      return items.map((it, idx) => {
+        const start = toMinutes(it.horaInicio || '');
+        const shiftNorm = normText(it.turno || (start !== null && start < 720 ? 'Mañana' : 'Noche'));
+        return {
+          id: it.id || `p${idx}`,
+          dia: it.dia || '', diaNorm: normText(it.dia || ''), fechaISO: it.fechaISO || it.fecha || '',
+          turno: it.turno || (shiftNorm.includes('noche') ? 'Noche' : 'Mañana'), turnoNorm: shiftNorm.includes('noche') ? 'noche' : 'mañana',
+          horaInicio: it.horaInicio || '', horaFin: it.horaFin || '', horaInicioTexto: it.horaInicioTexto || '', horaFinTexto: it.horaFinTexto || '', horaTexto: it.horaTexto || '',
+          puntoReunion: it.puntoReunion || it.punto || '', conductor: it.conductor || '', territorio: it.territorio || '', notas: it.notas || ''
+        };
+      }).sort((a,b) => (a.fechaISO || '').localeCompare(b.fechaISO || '') || comparePredShiftItems(a,b));
+    }
+
     function isMeetingBlock(it) { return normText(it.puntoReunion || '').includes('vida y ministerio'); }
     function getPredChip(turnoNorm) { return `<span class="pred-chip ${turnoNorm === 'noche' ? 'noche' : 'manana'}">${turnoNorm === 'noche' ? 'Noche' : 'Mañana'}</span>`; }
-    function getHeadline(items) { if (!items.length) return null; const now = new Date(); const todayISO = now.toISOString().slice(0,10); const mins = now.getHours()*60 + now.getMinutes(); const active = items.find(it => it.fechaISO === todayISO && it.horaInicio && it.horaFin && mins >= toMinutes(it.horaInicio) && mins < toMinutes(it.horaFin)); if (active) return { mode:'activo', item:active }; const upcomingToday = items.find(it => it.fechaISO === todayISO && it.horaInicio && mins < toMinutes(it.horaInicio)); if (upcomingToday) return { mode:'proximo', item:upcomingToday }; const future = items.find(it => (it.fechaISO || '') > todayISO || ((it.fechaISO || '') === todayISO && it.horaInicio && mins < toMinutes(it.horaInicio))); return { mode:'proximo', item: future || items[0] }; }
-    function renderPredShift(it) { if (!it) return '<div class="pred-empty">Sin turno</div>'; const meeting = isMeetingBlock(it); return `<div class="pred-shift-top">${getPredChip(it.turnoNorm)}<div class="pred-shift-time">${esc(formatTimeRange(it))}</div></div><div class="pred-shift-point">${esc(it.puntoReunion || '')}</div>${!meeting && it.conductor ? `<div class="pred-shift-conductor">${esc(it.conductor)}</div>` : ''}${!meeting && it.territorio ? `<div class="pred-shift-territory">Territorio: ${esc(it.territorio)}</div>` : ''}${!meeting && it.notas ? `<span class="pred-shift-note">${esc(it.notas)}</span>` : ''}`; }
-    function renderPreaching(d) { const items = preprocessPredication(d || { hasData:false, items:[] }); const weekLabel = d && d.semanaTexto ? d.semanaTexto : ''; const headline = getHeadline(items); const top = headline ? (() => { const it = headline.item; const meeting = isMeetingBlock(it); return `<div class="pred-next"><div class="pred-next-label">${headline.mode === 'activo' ? 'Turno actual' : 'Próxima predicación'}</div><div class="pred-next-head"><div><div class="pred-dayline">${esc(it.dia || '')}</div><div class="pred-hours">${esc(formatTimeRange(it))}</div></div>${getPredChip(it.turnoNorm)}</div><div class="pred-next-body"><div class="pred-point-big">${esc(it.puntoReunion || 'Sin definir')}</div>${!meeting && it.conductor ? `<div class="pred-conductor">${esc(it.conductor)}</div>` : ''}${!meeting && it.territorio ? `<div class="pred-territory-line">Territorio: ${esc(it.territorio)}</div>` : ''}${!meeting && it.notas ? `<span class="pred-shift-note">${esc(it.notas)}</span>` : ''}</div></div>`; })() : `<div class="pred-next"><div class="pred-next-label">Próxima predicación</div><div class="empty-state">No hay turnos cargados todavía.</div></div>`; const grouped = Object.fromEntries(DAY_ORDER.map(day => [day, { manana:null, noche:null }])); items.forEach(it => { if (!grouped[it.diaNorm]) return; if (it.turnoNorm === 'mañana') grouped[it.diaNorm].manana = it; if (it.turnoNorm === 'noche') grouped[it.diaNorm].noche = it; }); const daysHtml = DAY_ORDER.map(day => { const g = grouped[day]; return `<div class="pred-day-card"><div class="pred-day-head"><div class="pred-day-name">${DAY_LABEL[day]}</div></div><div class="pred-day-grid"><div class="pred-shift-col">${renderPredShift(g.manana)}</div><div class="pred-shift-col">${renderPredShift(g.noche)}</div></div></div>`; }).join(''); return `<div class="pred-wrap">${top}<div class="pred-program"><div class="pred-program-head"><div><div class="pred-program-title">Programa completo de predicación</div>${weekLabel ? `<div class="pred-week-label">${esc(weekLabel)}</div>` : ''}</div></div><div class="pred-days">${daysHtml || '<div class="empty-state">No hay turnos de predicación cargados todavía.</div>'}</div></div></div>`; }
+    function getHeadline(items) {
+      if (!items.length) return null;
+      const now = new Date(); const todayISO = now.toISOString().slice(0,10); const mins = now.getHours()*60 + now.getMinutes();
+      const active = items.find(it => it.fechaISO === todayISO && it.horaInicio && it.horaFin && mins >= toMinutes(it.horaInicio) && mins < toMinutes(it.horaFin));
+      if (active) return { mode:'activo', item:active };
+      const upcomingToday = items.find(it => it.fechaISO === todayISO && it.horaInicio && mins < toMinutes(it.horaInicio));
+      if (upcomingToday) return { mode:'proximo', item:upcomingToday };
+      const future = items.find(it => (it.fechaISO || '') > todayISO || ((it.fechaISO || '') === todayISO && it.horaInicio && mins < toMinutes(it.horaInicio)));
+      return { mode:'proximo', item: future || items[0] };
+    }
+
+    function renderPredEntry(it) {
+      const meeting = isMeetingBlock(it);
+      const group = isGroupPoint(it.puntoReunion || '');
+      if (group) {
+        return `<div class="pred-entry"><div class="pred-shift-point">${esc(normalizeGroupLabel(it.puntoReunion || ''))}</div>${it.territorio ? `<div class="pred-shift-territory">${esc(it.territorio)}</div>` : ''}${it.notas ? `<span class="pred-shift-note">${esc(it.notas)}</span>` : ''}</div>`;
+      }
+      return `<div class="pred-entry"><div class="pred-shift-point">${esc(it.puntoReunion || '')}</div>${!meeting && it.conductor ? `<div class="pred-shift-conductor">${esc(it.conductor)}</div>` : ''}${!meeting && it.territorio ? `<div class="pred-shift-territory">Territorio: ${esc(it.territorio)}</div>` : ''}${!meeting && it.notas ? `<span class="pred-shift-note">${esc(it.notas)}</span>` : ''}</div>`;
+    }
+
+    function renderPredShiftList(items, shiftNorm) {
+      if (!items || !items.length) return '<div class="pred-empty">Sin turno</div>';
+      const sorted = items.slice().sort(comparePredShiftItems);
+      const first = sorted[0];
+      return `<div class="pred-shift-top">${getPredChip(shiftNorm)}<div class="pred-shift-time">${esc(formatTimeRange(first))}</div></div><div class="pred-shift-group">${sorted.map(renderPredEntry).join('')}</div>`;
+    }
+
+    function renderPreaching(d) {
+      const items = preprocessPredication(d || { hasData:false, items:[] });
+      const weekLabel = d && d.semanaTexto ? d.semanaTexto : '';
+      const headline = getHeadline(items);
+      const top = headline ? (() => {
+        const it = headline.item; const meeting = isMeetingBlock(it); const group = isGroupPoint(it.puntoReunion || '');
+        return `<div class="pred-next"><div class="pred-next-label">${headline.mode === 'activo' ? 'Turno actual' : 'Próxima predicación'}</div><div class="pred-next-head"><div><div class="pred-dayline">${esc(it.dia || '')}</div><div class="pred-hours">${esc(formatTimeRange(it))}</div></div>${getPredChip(it.turnoNorm)}</div><div class="pred-next-body"><div class="pred-point-big">${esc(group ? normalizeGroupLabel(it.puntoReunion || '') : (it.puntoReunion || 'Sin definir'))}</div>${group ? (it.territorio ? `<div class="pred-territory-line">${esc(it.territorio)}</div>` : '') : (!meeting && it.conductor ? `<div class="pred-conductor">${esc(it.conductor)}</div>` : '')}${!group && !meeting && it.territorio ? `<div class="pred-territory-line">Territorio: ${esc(it.territorio)}</div>` : ''}${!meeting && it.notas ? `<span class="pred-shift-note">${esc(it.notas)}</span>` : ''}</div></div>`;
+      })() : `<div class="pred-next"><div class="pred-next-label">Próxima predicación</div><div class="empty-state">No hay turnos cargados todavía.</div></div>`;
+
+      const grouped = Object.fromEntries(DAY_ORDER.map(day => [day, { manana:[], noche:[] }]));
+      items.forEach(it => {
+        if (!grouped[it.diaNorm]) return;
+        if (it.turnoNorm === 'mañana') grouped[it.diaNorm].manana.push(it);
+        if (it.turnoNorm === 'noche') grouped[it.diaNorm].noche.push(it);
+      });
+
+      const daysHtml = DAY_ORDER.map(day => {
+        const g = grouped[day];
+        return `<div class="pred-day-card"><div class="pred-day-head"><div class="pred-day-name">${DAY_LABEL[day]}</div></div><div class="pred-day-grid"><div class="pred-shift-col">${renderPredShiftList(g.manana, 'mañana')}</div><div class="pred-shift-col">${renderPredShiftList(g.noche, 'noche')}</div></div></div>`;
+      }).join('');
+
+      return `<div class="pred-wrap">${top}<div class="pred-program"><div class="pred-program-head"><div><div class="pred-program-title">Programa completo de predicación</div>${weekLabel ? `<div class="pred-week-label">${esc(weekLabel)}</div>` : ''}</div></div><div class="pred-days">${daysHtml || '<div class="empty-state">No hay turnos de predicación cargados todavía.</div>'}</div></div></div>`;
+    }
     function renderTerritorio() { return `<div class="pdf-wrap"><iframe class="pdf-frame" src="${TERRITORY_PDF}" title="Mapa territorio"></iframe></div>`; }
     loadData();
   </script>
