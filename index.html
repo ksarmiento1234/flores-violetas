@@ -98,7 +98,7 @@
     .pred-shift-note { display:inline-block; margin-top:8px; background:var(--chip); color:#33444a; border-radius:999px; padding:6px 10px; font-size:.88rem; font-weight:700; }
     .pred-empty { color:var(--muted); font-size:.95rem; font-style:italic; padding-top:8px; }
 
-    /* MAPA SVG ESTABLE */
+    /* MAPA SVG INLINE MÁS NÍTIDO */
     .map-wrap { background:#fff; border:1px solid var(--border); border-radius:18px; overflow:hidden; box-shadow:0 2px 10px rgba(0,0,0,.06); }
     .map-toolbar { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 12px; background:#f4f7f6; border-bottom:1px solid #dde5e3; flex-wrap:wrap; }
     .map-actions { display:flex; gap:8px; flex-wrap:wrap; }
@@ -106,9 +106,9 @@
     .map-btn:hover { background:#f3f7f6; }
     .map-help { color:#516166; font-size:13px; }
     .map-viewport { position:relative; width:100%; height:calc(100vh - 180px); min-height:72vh; background:#edf1f2; overflow:hidden; touch-action:none; }
-    .map-stage { position:absolute; inset:0; transform-origin:0 0; will-change:transform; cursor:grab; }
-    .map-stage.dragging { cursor:grabbing; }
-    .map-svg { position:absolute; top:0; left:0; user-select:none; -webkit-user-drag:none; width:auto; height:auto; max-width:none; max-height:none; }
+    .map-inline-host { position:absolute; inset:0; user-select:none; }
+    .map-inline-host svg { width:100%; height:100%; display:block; }
+    .map-crosshair { position:absolute; inset:auto 12px 12px auto; background:rgba(255,255,255,.92); border:1px solid #d7dfdc; color:#33444a; border-radius:999px; padding:6px 10px; font-size:12px; font-weight:700; pointer-events:none; }
     .map-status { padding:8px 12px 12px; color:#516166; font-size:13px; }
 
     @media (max-width:760px) {
@@ -294,118 +294,208 @@
     }
 
     function renderTerritorio() {
-      return `<div class="map-wrap"><div class="map-toolbar"><div class="map-actions"><button class="map-btn" id="map-zoom-out" type="button">−</button><button class="map-btn" id="map-zoom-in" type="button">+</button><button class="map-btn" id="map-fit" type="button">Ajustar</button><button class="map-btn" id="map-reset" type="button">100%</button></div><div class="map-help">Usa dos dedos para alejar/acercar o arrastra para moverte.</div></div><div class="map-viewport" id="map-viewport"><div class="map-stage" id="map-stage"><img class="map-svg" id="map-svg" src="${TERRITORY_SVG}" alt="Mapa del territorio"></div></div><div class="map-status" id="map-status">Cargando mapa SVG…</div></div>`;
+      return `<div class="map-wrap"><div class="map-toolbar"><div class="map-actions"><button class="map-btn" id="map-zoom-out" type="button">−</button><button class="map-btn" id="map-zoom-in" type="button">+</button><button class="map-btn" id="map-fit" type="button">Ajustar</button><button class="map-btn" id="map-reset" type="button">100%</button></div><div class="map-help">Zoom vectorial real: dos dedos para acercar/alejar o arrastra para moverte.</div></div><div class="map-viewport" id="map-viewport"><div class="map-inline-host" id="map-inline-host"></div><div class="map-crosshair" id="map-crosshair">Vector</div></div><div class="map-status" id="map-status">Cargando mapa SVG…</div></div>`;
     }
 
-    function mountSvgViewer() {
+    async function mountSvgViewer() {
       const viewport = document.getElementById('map-viewport');
-      const stage = document.getElementById('map-stage');
-      const img = document.getElementById('map-svg');
+      const host = document.getElementById('map-inline-host');
       const status = document.getElementById('map-status');
-      if (!viewport || !stage || !img || !status) return;
+      if (!viewport || !host || !status) return;
 
-      const state = { scale:1, minScale:1, maxScale:12, x:0, y:0, dragging:false, pointers:new Map(), startX:0, startY:0, baseX:0, baseY:0, pinchStartDist:0, pinchStartScale:1, naturalWidth:0, naturalHeight:0 };
+      let text = '';
+      try {
+        const res = await fetch(TERRITORY_SVG, { cache: 'no-store' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        text = await res.text();
+      } catch (err) {
+        status.textContent = 'No se pudo cargar mapa-territorio.svg. Súbelo junto al index.html en la misma carpeta.';
+        return;
+      }
 
-      function setStatus() { status.textContent = `Zoom: ${Math.round(state.scale * 100)}%`; }
-      function apply() { stage.style.transform = `translate(${state.x}px, ${state.y}px) scale(${state.scale})`; setStatus(); }
-      function clamp() {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(text, 'image/svg+xml');
+      const svg = doc.documentElement;
+      if (!svg || svg.nodeName.toLowerCase() !== 'svg') {
+        status.textContent = 'El archivo mapa-territorio.svg no parece ser un SVG válido.';
+        return;
+      }
+      host.innerHTML = '';
+      host.appendChild(svg);
+      svg.setAttribute('width', '100%');
+      svg.setAttribute('height', '100%');
+      svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+      svg.style.display = 'block';
+      svg.style.touchAction = 'none';
+
+      const vbAttr = svg.getAttribute('viewBox');
+      let orig = null;
+      if (vbAttr) {
+        const vals = vbAttr.trim().split(/[ ,]+/).map(Number);
+        if (vals.length === 4 && vals.every(v => !Number.isNaN(v))) orig = { x: vals[0], y: vals[1], w: vals[2], h: vals[3] };
+      }
+      if (!orig) {
+        const w = parseFloat(svg.getAttribute('width')) || svg.viewBox.baseVal.width || 1000;
+        const h = parseFloat(svg.getAttribute('height')) || svg.viewBox.baseVal.height || 1000;
+        orig = { x: 0, y: 0, w, h };
+        svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+      }
+
+      const state = {
+        orig,
+        current: { ...orig },
+        minScale: 1,
+        maxScale: 30,
+        pointers: new Map(),
+        dragging: false,
+        start: null,
+        base: null,
+        pinchStartDistance: 0,
+        pinchStartRect: null
+      };
+
+      function svgScalePxPerUnit() {
         const vw = viewport.clientWidth, vh = viewport.clientHeight;
-        const sw = state.naturalWidth * state.scale, sh = state.naturalHeight * state.scale;
-        const minX = Math.min(0, vw - sw), minY = Math.min(0, vh - sh);
-        const maxX = sw < vw ? (vw - sw) / 2 : 0, maxY = sh < vh ? (vh - sh) / 2 : 0;
-        state.x = Math.min(maxX, Math.max(minX, state.x));
-        state.y = Math.min(maxY, Math.max(minY, state.y));
+        return Math.min(vw / state.current.w, vh / state.current.h);
       }
-      function fitToViewport() {
+      function renderedMetrics() {
         const vw = viewport.clientWidth, vh = viewport.clientHeight;
-        if (!state.naturalWidth || !state.naturalHeight || !vw || !vh) return;
-        const scaleX = vw / state.naturalWidth, scaleY = vh / state.naturalHeight;
-        state.minScale = Math.min(scaleX, scaleY);
-        state.scale = state.minScale;
-        const sw = state.naturalWidth * state.scale, sh = state.naturalHeight * state.scale;
-        state.x = (vw - sw) / 2; state.y = (vh - sh) / 2;
-        apply();
+        const scale = svgScalePxPerUnit();
+        const rw = state.current.w * scale, rh = state.current.h * scale;
+        const ox = (vw - rw) / 2, oy = (vh - rh) / 2;
+        return { scale, rw, rh, ox, oy, vw, vh };
       }
-      function zoomAt(factor, cx, cy) {
-        const newScale = Math.min(state.maxScale, Math.max(state.minScale, state.scale * factor));
-        const scaleFactor = newScale / state.scale;
-        state.x = cx - (cx - state.x) * scaleFactor;
-        state.y = cy - (cy - state.y) * scaleFactor;
-        state.scale = newScale;
-        clamp(); apply();
+      function pointToSvg(clientX, clientY) {
+        const rect = viewport.getBoundingClientRect();
+        const localX = clientX - rect.left, localY = clientY - rect.top;
+        const m = renderedMetrics();
+        return {
+          x: state.current.x + (localX - m.ox) / m.scale,
+          y: state.current.y + (localY - m.oy) / m.scale
+        };
       }
-      function pointerDistance() {
-        const vals = Array.from(state.pointers.values());
-        if (vals.length < 2) return 0;
-        const dx = vals[0].x - vals[1].x, dy = vals[0].y - vals[1].y;
-        return Math.hypot(dx, dy);
+      function updateStatus() {
+        const zoomPct = Math.round((state.orig.w / state.current.w) * 100);
+        status.textContent = `Zoom: ${zoomPct}%`; }
+      function clampRect() {
+        const c = state.current, o = state.orig;
+        if (c.w <= o.w) {
+          c.x = Math.max(o.x, Math.min(o.x + o.w - c.w, c.x));
+        } else {
+          c.x = o.x - (c.w - o.w) / 2;
+        }
+        if (c.h <= o.h) {
+          c.y = Math.max(o.y, Math.min(o.y + o.h - c.h, c.y));
+        } else {
+          c.y = o.y - (c.h - o.h) / 2;
+        }
       }
-      function pointerCenter() {
-        const vals = Array.from(state.pointers.values());
-        if (!vals.length) return {x:viewport.clientWidth/2, y:viewport.clientHeight/2};
-        const x = vals.reduce((s,p)=>s+p.x,0)/vals.length, y = vals.reduce((s,p)=>s+p.y,0)/vals.length;
-        return {x,y};
+      function applyViewBox() {
+        clampRect();
+        svg.setAttribute('viewBox', `${state.current.x} ${state.current.y} ${state.current.w} ${state.current.h}`);
+        updateStatus();
       }
-
-      img.addEventListener('load', () => {
-        state.naturalWidth = img.naturalWidth || 1000;
-        state.naturalHeight = img.naturalHeight || 1000;
-        status.textContent = 'Mapa cargado';
-        fitToViewport();
-      });
-      img.addEventListener('error', () => { status.textContent = 'No se pudo cargar mapa-territorio.svg. Súbelo junto al index.html.'; });
+      function fitAll() { state.current = { ...state.orig }; applyViewBox(); }
+      function resetNative() { fitAll(); }
+      function zoomAt(factor, svgX, svgY) {
+        const targetW = Math.max(state.orig.w / state.maxScale, Math.min(state.orig.w / state.minScale, state.current.w / factor));
+        const targetH = state.current.h * (targetW / state.current.w);
+        const relX = (svgX - state.current.x) / state.current.w;
+        const relY = (svgY - state.current.y) / state.current.h;
+        state.current.x = svgX - relX * targetW;
+        state.current.y = svgY - relY * targetH;
+        state.current.w = targetW; state.current.h = targetH;
+        applyViewBox();
+      }
+      function currentZoomFactor() { return state.orig.w / state.current.w; }
+      function centerSvgPoint() { return { x: state.current.x + state.current.w / 2, y: state.current.y + state.current.h / 2 }; }
 
       viewport.addEventListener('wheel', (e) => {
         e.preventDefault();
-        const rect = viewport.getBoundingClientRect();
-        const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
-        zoomAt(e.deltaY < 0 ? 1.12 : 1/1.12, cx, cy);
+        const p = pointToSvg(e.clientX, e.clientY);
+        zoomAt(e.deltaY < 0 ? 1.12 : 1 / 1.12, p.x, p.y);
       }, { passive:false });
+
+      viewport.addEventListener('dblclick', (e) => {
+        const p = pointToSvg(e.clientX, e.clientY);
+        zoomAt(1.7, p.x, p.y);
+      });
+
+      function pointerDistance() {
+        const vals = Array.from(state.pointers.values()); if (vals.length < 2) return 0;
+        const dx = vals[0].x - vals[1].x, dy = vals[0].y - vals[1].y; return Math.hypot(dx, dy);
+      }
+      function pointerCenter() {
+        const vals = Array.from(state.pointers.values());
+        const x = vals.reduce((s,p)=>s+p.x,0)/vals.length, y = vals.reduce((s,p)=>s+p.y,0)/vals.length;
+        return { x, y };
+      }
 
       viewport.addEventListener('pointerdown', (e) => {
         viewport.setPointerCapture(e.pointerId);
-        state.pointers.set(e.pointerId, {x:e.clientX - viewport.getBoundingClientRect().left, y:e.clientY - viewport.getBoundingClientRect().top});
+        state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
         if (state.pointers.size === 1) {
-          state.dragging = true; stage.classList.add('dragging');
-          state.startX = e.clientX; state.startY = e.clientY; state.baseX = state.x; state.baseY = state.y;
+          state.dragging = true;
+          state.start = { x: e.clientX, y: e.clientY };
+          state.base = { ...state.current };
         } else if (state.pointers.size === 2) {
-          state.dragging = false; stage.classList.remove('dragging');
-          state.pinchStartDist = pointerDistance(); state.pinchStartScale = state.scale;
+          state.dragging = false;
+          state.pinchStartDistance = pointerDistance();
+          state.pinchStartRect = { ...state.current };
         }
       });
+
       viewport.addEventListener('pointermove', (e) => {
         if (!state.pointers.has(e.pointerId)) return;
-        const rect = viewport.getBoundingClientRect();
-        state.pointers.set(e.pointerId, {x:e.clientX - rect.left, y:e.clientY - rect.top});
+        state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
         if (state.pointers.size === 2) {
           const dist = pointerDistance();
-          if (!state.pinchStartDist) return;
+          if (!state.pinchStartDistance || !state.pinchStartRect) return;
           const center = pointerCenter();
-          const newScale = Math.min(state.maxScale, Math.max(state.minScale, state.pinchStartScale * (dist / state.pinchStartDist)));
-          const scaleFactor = newScale / state.scale;
-          state.x = center.x - (center.x - state.x) * scaleFactor;
-          state.y = center.y - (center.y - state.y) * scaleFactor;
-          state.scale = newScale; clamp(); apply();
+          const centerSvg = pointToSvg(center.x, center.y);
+          state.current = { ...state.pinchStartRect };
+          const factor = dist / state.pinchStartDistance;
+          const startW = state.pinchStartRect.w;
+          const targetW = Math.max(state.orig.w / state.maxScale, Math.min(state.orig.w / state.minScale, startW / factor));
+          const targetH = state.pinchStartRect.h * (targetW / state.pinchStartRect.w);
+          const relX = (centerSvg.x - state.pinchStartRect.x) / state.pinchStartRect.w;
+          const relY = (centerSvg.y - state.pinchStartRect.y) / state.pinchStartRect.h;
+          state.current.x = centerSvg.x - relX * targetW;
+          state.current.y = centerSvg.y - relY * targetH;
+          state.current.w = targetW; state.current.h = targetH;
+          applyViewBox();
           return;
         }
-        if (state.dragging && state.pointers.size === 1) {
-          state.x = state.baseX + (e.clientX - state.startX);
-          state.y = state.baseY + (e.clientY - state.startY);
-          clamp(); apply();
+
+        if (state.dragging && state.start && state.base) {
+          state.current = { ...state.base };
+          const m = renderedMetrics();
+          const dxUnit = (e.clientX - state.start.x) / m.scale;
+          const dyUnit = (e.clientY - state.start.y) / m.scale;
+          state.current.x = state.base.x - dxUnit;
+          state.current.y = state.base.y - dyUnit;
+          applyViewBox();
         }
       });
-      function endPointer(e) { state.pointers.delete(e.pointerId); if (state.pointers.size < 2) state.pinchStartDist = 0; if (!state.pointers.size) { state.dragging = false; stage.classList.remove('dragging'); } }
+
+      function endPointer(e) {
+        state.pointers.delete(e.pointerId);
+        if (state.pointers.size < 2) { state.pinchStartDistance = 0; state.pinchStartRect = null; }
+        if (!state.pointers.size) { state.dragging = false; state.start = null; state.base = null; }
+      }
       viewport.addEventListener('pointerup', endPointer);
       viewport.addEventListener('pointercancel', endPointer);
       viewport.addEventListener('pointerleave', endPointer);
 
-      document.getElementById('map-zoom-in')?.addEventListener('click', () => zoomAt(1.2, viewport.clientWidth/2, viewport.clientHeight/2));
-      document.getElementById('map-zoom-out')?.addEventListener('click', () => zoomAt(1/1.2, viewport.clientWidth/2, viewport.clientHeight/2));
-      document.getElementById('map-fit')?.addEventListener('click', fitToViewport);
-      document.getElementById('map-reset')?.addEventListener('click', () => {
-        state.scale = 1; state.x = (viewport.clientWidth - state.naturalWidth) / 2; state.y = (viewport.clientHeight - state.naturalHeight) / 2; clamp(); apply();
-      });
-      window.addEventListener('resize', () => { if (state.scale <= state.minScale + 0.001) fitToViewport(); else { clamp(); apply(); } });
+      document.getElementById('map-zoom-in')?.addEventListener('click', () => { const c = centerSvgPoint(); zoomAt(1.25, c.x, c.y); });
+      document.getElementById('map-zoom-out')?.addEventListener('click', () => { const c = centerSvgPoint(); zoomAt(1 / 1.25, c.x, c.y); });
+      document.getElementById('map-fit')?.addEventListener('click', fitAll);
+      document.getElementById('map-reset')?.addEventListener('click', resetNative);
+      window.addEventListener('resize', applyViewBox);
+
+      fitAll();
+      status.textContent = `Zoom: ${Math.round(currentZoomFactor() * 100)}%`;
     }
 
     loadData();
