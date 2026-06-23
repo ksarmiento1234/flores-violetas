@@ -98,7 +98,7 @@
     .pred-shift-note { display:inline-block; margin-top:8px; background:var(--chip); color:#33444a; border-radius:999px; padding:6px 10px; font-size:.88rem; font-weight:700; }
     .pred-empty { color:var(--muted); font-size:.95rem; font-style:italic; padding-top:8px; }
 
-    /* MAPA SVG INLINE MÁS NÍTIDO */
+    /* MAPA SVG HÍBRIDO RÁPIDO */
     .map-wrap { background:#fff; border:1px solid var(--border); border-radius:18px; overflow:hidden; box-shadow:0 2px 10px rgba(0,0,0,.06); }
     .map-toolbar { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 12px; background:#f4f7f6; border-bottom:1px solid #dde5e3; flex-wrap:wrap; }
     .map-actions { display:flex; gap:8px; flex-wrap:wrap; }
@@ -107,8 +107,9 @@
     .map-help { color:#516166; font-size:13px; }
     .map-viewport { position:relative; width:100%; height:calc(100vh - 180px); min-height:72vh; background:#edf1f2; overflow:hidden; touch-action:none; }
     .map-inline-host { position:absolute; inset:0; user-select:none; }
-    .map-inline-host svg { width:100%; height:100%; display:block; }
-    .map-crosshair { position:absolute; inset:auto 12px 12px auto; background:rgba(255,255,255,.92); border:1px solid #d7dfdc; color:#33444a; border-radius:999px; padding:6px 10px; font-size:12px; font-weight:700; pointer-events:none; }
+    .map-render-layer { position:absolute; inset:0; will-change:transform; transform-origin:0 0; }
+    .map-render-layer svg { width:100%; height:100%; display:block; pointer-events:none; }
+    .map-hud { position:absolute; right:12px; bottom:12px; background:rgba(255,255,255,.92); border:1px solid #d7dfdc; color:#33444a; border-radius:999px; padding:6px 10px; font-size:12px; font-weight:700; pointer-events:none; }
     .map-status { padding:8px 12px 12px; color:#516166; font-size:13px; }
 
     @media (max-width:760px) {
@@ -294,7 +295,7 @@
     }
 
     function renderTerritorio() {
-      return `<div class="map-wrap"><div class="map-toolbar"><div class="map-actions"><button class="map-btn" id="map-zoom-out" type="button">−</button><button class="map-btn" id="map-zoom-in" type="button">+</button><button class="map-btn" id="map-fit" type="button">Ajustar</button><button class="map-btn" id="map-reset" type="button">100%</button></div><div class="map-help">Zoom vectorial real: dos dedos para acercar/alejar o arrastra para moverte.</div></div><div class="map-viewport" id="map-viewport"><div class="map-inline-host" id="map-inline-host"></div><div class="map-crosshair" id="map-crosshair">Vector</div></div><div class="map-status" id="map-status">Cargando mapa SVG…</div></div>`;
+      return `<div class="map-wrap"><div class="map-toolbar"><div class="map-actions"><button class="map-btn" id="map-zoom-out" type="button">−</button><button class="map-btn" id="map-zoom-in" type="button">+</button><button class="map-btn" id="map-fit" type="button">Ajustar</button><button class="map-btn" id="map-reset" type="button">100%</button></div><div class="map-help">Modo rápido: el movimiento es suave y al soltar recupera nitidez máxima.</div></div><div class="map-viewport" id="map-viewport"><div class="map-inline-host" id="map-inline-host"></div><div class="map-hud" id="map-hud">Rápido</div></div><div class="map-status" id="map-status">Cargando mapa SVG…</div></div>`;
     }
 
     async function mountSvgViewer() {
@@ -316,20 +317,19 @@
       const parser = new DOMParser();
       const doc = parser.parseFromString(text, 'image/svg+xml');
       const svg = doc.documentElement;
-      if (!svg || svg.nodeName.toLowerCase() !== 'svg') {
-        status.textContent = 'El archivo mapa-territorio.svg no parece ser un SVG válido.';
-        return;
-      }
-      host.innerHTML = '';
-      host.appendChild(svg);
+      if (!svg || svg.nodeName.toLowerCase() !== 'svg') { status.textContent = 'El archivo mapa-territorio.svg no parece ser un SVG válido.'; return; }
+
+      host.innerHTML = '<div class="map-render-layer" id="map-render-layer"></div>';
+      const layer = document.getElementById('map-render-layer');
+      layer.appendChild(svg);
       svg.setAttribute('width', '100%');
       svg.setAttribute('height', '100%');
       svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
       svg.style.display = 'block';
       svg.style.touchAction = 'none';
 
-      const vbAttr = svg.getAttribute('viewBox');
       let orig = null;
+      const vbAttr = svg.getAttribute('viewBox');
       if (vbAttr) {
         const vals = vbAttr.trim().split(/[ ,]+/).map(Number);
         if (vals.length === 4 && vals.every(v => !Number.isNaN(v))) orig = { x: vals[0], y: vals[1], w: vals[2], h: vals[3] };
@@ -347,56 +347,45 @@
         minScale: 1,
         maxScale: 30,
         pointers: new Map(),
-        dragging: false,
-        start: null,
-        base: null,
-        pinchStartDistance: 0,
-        pinchStartRect: null
+        interaction: null,
+        rafId: 0,
+        preview: null
       };
 
-      function svgScalePxPerUnit() {
+      function renderedMetrics(rect = state.current) {
         const vw = viewport.clientWidth, vh = viewport.clientHeight;
-        return Math.min(vw / state.current.w, vh / state.current.h);
-      }
-      function renderedMetrics() {
-        const vw = viewport.clientWidth, vh = viewport.clientHeight;
-        const scale = svgScalePxPerUnit();
-        const rw = state.current.w * scale, rh = state.current.h * scale;
+        const scale = Math.min(vw / rect.w, vh / rect.h);
+        const rw = rect.w * scale, rh = rect.h * scale;
         const ox = (vw - rw) / 2, oy = (vh - rh) / 2;
-        return { scale, rw, rh, ox, oy, vw, vh };
+        return { vw, vh, scale, rw, rh, ox, oy };
       }
-      function pointToSvg(clientX, clientY) {
-        const rect = viewport.getBoundingClientRect();
-        const localX = clientX - rect.left, localY = clientY - rect.top;
-        const m = renderedMetrics();
-        return {
-          x: state.current.x + (localX - m.ox) / m.scale,
-          y: state.current.y + (localY - m.oy) / m.scale
-        };
+      function pointToSvg(clientX, clientY, rect = state.current) {
+        const vr = viewport.getBoundingClientRect();
+        const localX = clientX - vr.left, localY = clientY - vr.top;
+        const m = renderedMetrics(rect);
+        return { x: rect.x + (localX - m.ox) / m.scale, y: rect.y + (localY - m.oy) / m.scale };
+      }
+      function clampRect(rect) {
+        const o = state.orig;
+        if (rect.w <= o.w) rect.x = Math.max(o.x, Math.min(o.x + o.w - rect.w, rect.x));
+        else rect.x = o.x - (rect.w - o.w) / 2;
+        if (rect.h <= o.h) rect.y = Math.max(o.y, Math.min(o.y + o.h - rect.h, rect.y));
+        else rect.y = o.y - (rect.h - o.h) / 2;
+        return rect;
       }
       function updateStatus() {
         const zoomPct = Math.round((state.orig.w / state.current.w) * 100);
-        status.textContent = `Zoom: ${zoomPct}%`; }
-      function clampRect() {
-        const c = state.current, o = state.orig;
-        if (c.w <= o.w) {
-          c.x = Math.max(o.x, Math.min(o.x + o.w - c.w, c.x));
-        } else {
-          c.x = o.x - (c.w - o.w) / 2;
-        }
-        if (c.h <= o.h) {
-          c.y = Math.max(o.y, Math.min(o.y + o.h - c.h, c.y));
-        } else {
-          c.y = o.y - (c.h - o.h) / 2;
-        }
+        status.textContent = `Zoom: ${zoomPct}%`;
       }
       function applyViewBox() {
-        clampRect();
+        clampRect(state.current);
         svg.setAttribute('viewBox', `${state.current.x} ${state.current.y} ${state.current.w} ${state.current.h}`);
+        layer.style.transform = 'translate3d(0,0,0) scale(1)';
+        layer.style.transformOrigin = '0 0';
         updateStatus();
       }
       function fitAll() { state.current = { ...state.orig }; applyViewBox(); }
-      function resetNative() { fitAll(); }
+      function centerSvgPoint() { return { x: state.current.x + state.current.w / 2, y: state.current.y + state.current.h / 2 }; }
       function zoomAt(factor, svgX, svgY) {
         const targetW = Math.max(state.orig.w / state.maxScale, Math.min(state.orig.w / state.minScale, state.current.w / factor));
         const targetH = state.current.h * (targetW / state.current.w);
@@ -407,95 +396,137 @@
         state.current.w = targetW; state.current.h = targetH;
         applyViewBox();
       }
-      function currentZoomFactor() { return state.orig.w / state.current.w; }
-      function centerSvgPoint() { return { x: state.current.x + state.current.w / 2, y: state.current.y + state.current.h / 2 }; }
+
+      function schedulePreview() {
+        if (state.rafId) return;
+        state.rafId = requestAnimationFrame(() => {
+          state.rafId = 0;
+          renderPreview();
+        });
+      }
+      function renderPreview() {
+        if (!state.interaction) return;
+        if (state.interaction.type === 'pan') {
+          const rect = viewport.getBoundingClientRect();
+          const p = state.pointers.get(state.interaction.pointerId);
+          if (!p) return;
+          const dx = p.x - state.interaction.startClient.x;
+          const dy = p.y - state.interaction.startClient.y;
+          state.preview = { type:'pan', dx, dy };
+          layer.style.transformOrigin = '0 0';
+          layer.style.transform = `translate3d(${dx}px, ${dy}px, 0) scale(1)`;
+        } else if (state.interaction.type === 'pinch') {
+          if (state.pointers.size < 2) return;
+          const vals = Array.from(state.pointers.values());
+          const dx = vals[0].x - vals[1].x, dy = vals[0].y - vals[1].y;
+          const dist = Math.hypot(dx, dy);
+          if (!state.interaction.startDistance) return;
+          const factor = dist / state.interaction.startDistance;
+          const currentCenter = { x: (vals[0].x + vals[1].x)/2, y: (vals[0].y + vals[1].y)/2 };
+          const startCenter = state.interaction.startCenter;
+          const tx = currentCenter.x - startCenter.x;
+          const ty = currentCenter.y - startCenter.y;
+          state.preview = { type:'pinch', factor, tx, ty, currentCenter };
+          layer.style.transformOrigin = `${startCenter.x}px ${startCenter.y}px`;
+          layer.style.transform = `translate3d(${tx}px, ${ty}px, 0) scale(${factor})`;
+        }
+      }
+      function commitPreview() {
+        if (!state.preview || !state.interaction) return;
+        const startRect = { ...state.interaction.baseRect };
+        if (state.preview.type === 'pan') {
+          const m = renderedMetrics(startRect);
+          const dxUnit = state.preview.dx / m.scale;
+          const dyUnit = state.preview.dy / m.scale;
+          state.current = { ...startRect, x: startRect.x - dxUnit, y: startRect.y - dyUnit };
+        } else if (state.preview.type === 'pinch') {
+          const factorRaw = state.preview.factor;
+          const targetW = Math.max(state.orig.w / state.maxScale, Math.min(state.orig.w / state.minScale, startRect.w / factorRaw));
+          const targetH = startRect.h * (targetW / startRect.w);
+          const anchorSvg = pointToSvg(state.interaction.startCenter.x + viewport.getBoundingClientRect().left, state.interaction.startCenter.y + viewport.getBoundingClientRect().top, startRect);
+          const localCenter = state.preview.currentCenter;
+          const vw = viewport.clientWidth, vh = viewport.clientHeight;
+          const scale = Math.min(vw / targetW, vh / targetH);
+          const rw = targetW * scale, rh = targetH * scale;
+          const ox = (vw - rw) / 2, oy = (vh - rh) / 2;
+          state.current = {
+            x: anchorSvg.x - (localCenter.x - ox) / scale,
+            y: anchorSvg.y - (localCenter.y - oy) / scale,
+            w: targetW,
+            h: targetH
+          };
+        }
+        state.preview = null;
+        applyViewBox();
+      }
+      function endInteraction() {
+        if (state.rafId) { cancelAnimationFrame(state.rafId); state.rafId = 0; }
+        commitPreview();
+        state.interaction = null;
+      }
 
       viewport.addEventListener('wheel', (e) => {
         e.preventDefault();
         const p = pointToSvg(e.clientX, e.clientY);
-        zoomAt(e.deltaY < 0 ? 1.12 : 1 / 1.12, p.x, p.y);
+        zoomAt(e.deltaY < 0 ? 1.12 : 1/1.12, p.x, p.y);
       }, { passive:false });
-
       viewport.addEventListener('dblclick', (e) => {
         const p = pointToSvg(e.clientX, e.clientY);
         zoomAt(1.7, p.x, p.y);
       });
 
-      function pointerDistance() {
-        const vals = Array.from(state.pointers.values()); if (vals.length < 2) return 0;
-        const dx = vals[0].x - vals[1].x, dy = vals[0].y - vals[1].y; return Math.hypot(dx, dy);
-      }
-      function pointerCenter() {
-        const vals = Array.from(state.pointers.values());
-        const x = vals.reduce((s,p)=>s+p.x,0)/vals.length, y = vals.reduce((s,p)=>s+p.y,0)/vals.length;
-        return { x, y };
-      }
-
       viewport.addEventListener('pointerdown', (e) => {
         viewport.setPointerCapture(e.pointerId);
-        state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        const vr = viewport.getBoundingClientRect();
+        state.pointers.set(e.pointerId, { x: e.clientX - vr.left, y: e.clientY - vr.top });
         if (state.pointers.size === 1) {
-          state.dragging = true;
-          state.start = { x: e.clientX, y: e.clientY };
-          state.base = { ...state.current };
+          state.interaction = { type:'pan', pointerId:e.pointerId, startClient:{ x:e.clientX - vr.left, y:e.clientY - vr.top }, baseRect:{ ...state.current } };
         } else if (state.pointers.size === 2) {
-          state.dragging = false;
-          state.pinchStartDistance = pointerDistance();
-          state.pinchStartRect = { ...state.current };
+          const vals = Array.from(state.pointers.values());
+          const dx = vals[0].x - vals[1].x, dy = vals[0].y - vals[1].y;
+          state.interaction = { type:'pinch', startDistance:Math.hypot(dx,dy), startCenter:{ x:(vals[0].x+vals[1].x)/2, y:(vals[0].y+vals[1].y)/2 }, baseRect:{ ...state.current } };
         }
       });
 
       viewport.addEventListener('pointermove', (e) => {
         if (!state.pointers.has(e.pointerId)) return;
-        state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-
-        if (state.pointers.size === 2) {
-          const dist = pointerDistance();
-          if (!state.pinchStartDistance || !state.pinchStartRect) return;
-          const center = pointerCenter();
-          const centerSvg = pointToSvg(center.x, center.y);
-          state.current = { ...state.pinchStartRect };
-          const factor = dist / state.pinchStartDistance;
-          const startW = state.pinchStartRect.w;
-          const targetW = Math.max(state.orig.w / state.maxScale, Math.min(state.orig.w / state.minScale, startW / factor));
-          const targetH = state.pinchStartRect.h * (targetW / state.pinchStartRect.w);
-          const relX = (centerSvg.x - state.pinchStartRect.x) / state.pinchStartRect.w;
-          const relY = (centerSvg.y - state.pinchStartRect.y) / state.pinchStartRect.h;
-          state.current.x = centerSvg.x - relX * targetW;
-          state.current.y = centerSvg.y - relY * targetH;
-          state.current.w = targetW; state.current.h = targetH;
-          applyViewBox();
-          return;
+        const vr = viewport.getBoundingClientRect();
+        state.pointers.set(e.pointerId, { x: e.clientX - vr.left, y: e.clientY - vr.top });
+        if (state.pointers.size === 2 && state.interaction?.type !== 'pinch') {
+          const vals = Array.from(state.pointers.values());
+          const dx = vals[0].x - vals[1].x, dy = vals[0].y - vals[1].y;
+          state.interaction = { type:'pinch', startDistance:Math.hypot(dx,dy), startCenter:{ x:(vals[0].x+vals[1].x)/2, y:(vals[0].y+vals[1].y)/2 }, baseRect:{ ...state.current } };
         }
-
-        if (state.dragging && state.start && state.base) {
-          state.current = { ...state.base };
-          const m = renderedMetrics();
-          const dxUnit = (e.clientX - state.start.x) / m.scale;
-          const dyUnit = (e.clientY - state.start.y) / m.scale;
-          state.current.x = state.base.x - dxUnit;
-          state.current.y = state.base.y - dyUnit;
-          applyViewBox();
-        }
+        schedulePreview();
       });
 
-      function endPointer(e) {
+      function pointerEnd(e) {
         state.pointers.delete(e.pointerId);
-        if (state.pointers.size < 2) { state.pinchStartDistance = 0; state.pinchStartRect = null; }
-        if (!state.pointers.size) { state.dragging = false; state.start = null; state.base = null; }
+        if (state.pointers.size === 0) {
+          endInteraction();
+        } else if (state.pointers.size === 1) {
+          endInteraction();
+          const [id, p] = Array.from(state.pointers.entries())[0];
+          state.interaction = { type:'pan', pointerId:id, startClient:{ ...p }, baseRect:{ ...state.current } };
+        } else if (state.pointers.size === 2) {
+          endInteraction();
+          const vals = Array.from(state.pointers.values());
+          const dx = vals[0].x - vals[1].x, dy = vals[0].y - vals[1].y;
+          state.interaction = { type:'pinch', startDistance:Math.hypot(dx,dy), startCenter:{ x:(vals[0].x+vals[1].x)/2, y:(vals[0].y+vals[1].y)/2 }, baseRect:{ ...state.current } };
+        }
       }
-      viewport.addEventListener('pointerup', endPointer);
-      viewport.addEventListener('pointercancel', endPointer);
-      viewport.addEventListener('pointerleave', endPointer);
+      viewport.addEventListener('pointerup', pointerEnd);
+      viewport.addEventListener('pointercancel', pointerEnd);
+      viewport.addEventListener('pointerleave', pointerEnd);
 
       document.getElementById('map-zoom-in')?.addEventListener('click', () => { const c = centerSvgPoint(); zoomAt(1.25, c.x, c.y); });
-      document.getElementById('map-zoom-out')?.addEventListener('click', () => { const c = centerSvgPoint(); zoomAt(1 / 1.25, c.x, c.y); });
+      document.getElementById('map-zoom-out')?.addEventListener('click', () => { const c = centerSvgPoint(); zoomAt(1/1.25, c.x, c.y); });
       document.getElementById('map-fit')?.addEventListener('click', fitAll);
-      document.getElementById('map-reset')?.addEventListener('click', resetNative);
+      document.getElementById('map-reset')?.addEventListener('click', fitAll);
       window.addEventListener('resize', applyViewBox);
 
       fitAll();
-      status.textContent = `Zoom: ${Math.round(currentZoomFactor() * 100)}%`;
+      status.textContent = 'Mapa listo';
     }
 
     loadData();
