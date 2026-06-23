@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Roles semanales</title>
   <style>
-    :root { --green:#0b6e63; --green-soft:#d9ddda; --green-line:#2c7b70; --blue:#3c7f8f; --gold:#a87d10; --red:#a51f27; --bg:#edf1f2; --paper:#f5f5f3; --border:#d8d8d4; --text:#152128; --muted:#5e6a70; --tab:#e9edeb; --night:#183556; --daychip:#e0b11a; --pdf-bg:#fff; --chip:#f0f3f4; }
+    :root { --green:#0b6e63; --green-soft:#d9ddda; --green-line:#2c7b70; --blue:#3c7f8f; --gold:#a87d10; --red:#a51f27; --bg:#edf1f2; --paper:#f5f5f3; --border:#d8d8d4; --text:#152128; --muted:#5e6a70; --tab:#e9edeb; --night:#183556; --daychip:#e0b11a; --chip:#f0f3f4; }
     * { box-sizing:border-box; }
     html, body { margin:0; padding:0; }
     body { font-family:Arial,Helvetica,sans-serif; background:var(--bg); color:var(--text); padding:14px; }
@@ -97,8 +97,19 @@
     .pred-shift-territory { margin-top:8px; font-size:.93rem; color:#22353a; font-weight:700; }
     .pred-shift-note { display:inline-block; margin-top:8px; background:var(--chip); color:#33444a; border-radius:999px; padding:6px 10px; font-size:.88rem; font-weight:700; }
     .pred-empty { color:var(--muted); font-size:.95rem; font-style:italic; padding-top:8px; }
-    .pdf-wrap { width:100%; height:calc(100vh - 110px); min-height:78vh; background:var(--pdf-bg); border:1px solid var(--border); border-radius:18px; overflow:hidden; box-shadow:0 2px 10px rgba(0,0,0,.06); }
-    .pdf-frame { width:100%; height:100%; border:none; background:var(--pdf-bg); }
+
+    /* MAPA SVG ESTABLE */
+    .map-wrap { background:#fff; border:1px solid var(--border); border-radius:18px; overflow:hidden; box-shadow:0 2px 10px rgba(0,0,0,.06); }
+    .map-toolbar { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 12px; background:#f4f7f6; border-bottom:1px solid #dde5e3; flex-wrap:wrap; }
+    .map-actions { display:flex; gap:8px; flex-wrap:wrap; }
+    .map-btn { border:1px solid #c9d4d1; background:#fff; color:#1c4a44; padding:8px 12px; border-radius:999px; font-size:14px; font-weight:700; cursor:pointer; }
+    .map-btn:hover { background:#f3f7f6; }
+    .map-help { color:#516166; font-size:13px; }
+    .map-viewport { position:relative; width:100%; height:calc(100vh - 180px); min-height:72vh; background:#edf1f2; overflow:hidden; touch-action:none; }
+    .map-stage { position:absolute; inset:0; transform-origin:0 0; will-change:transform; cursor:grab; }
+    .map-stage.dragging { cursor:grabbing; }
+    .map-svg { position:absolute; top:0; left:0; user-select:none; -webkit-user-drag:none; width:auto; height:auto; max-width:none; max-height:none; }
+    .map-status { padding:8px 12px 12px; color:#516166; font-size:13px; }
 
     @media (max-width:760px) {
       .pred-day-grid { grid-template-columns:1fr; }
@@ -106,13 +117,13 @@
       .wk-body { padding:14px 18px 20px; }
       .wk-main-title { font-size:clamp(1.8rem,6.2vw,2.55rem); }
       .wk-watch-title { font-size:clamp(1.8rem,5.7vw,2.45rem); }
+      .map-viewport { height:calc(100vh - 210px); min-height:68vh; }
     }
     @media (max-width:640px) {
       body { padding:0; }
       .meeting-menu { position:sticky; top:0; z-index:20; background:rgba(237,241,242,.97); padding:10px 8px 8px; margin-bottom:0; backdrop-filter:blur(6px); }
-      .card,.pred-program,.pdf-wrap,.pred-next,.wk-card { border-left:none; border-right:none; box-shadow:none; border-radius:0; }
+      .card,.pred-program,.pred-next,.wk-card,.map-wrap { border-left:none; border-right:none; box-shadow:none; border-radius:0; }
       .pred-program-head,.pred-days { padding-left:16px; padding-right:16px; }
-      .pdf-wrap { height:calc(100vh - 86px); min-height:calc(100vh - 86px); }
       .head-nav, .wk-date-nav { grid-template-columns:38px 1fr 38px; gap:6px; }
       .nav-arrow { width:38px; height:38px; font-size:18px; }
       .head-title { font-size:1rem; }
@@ -124,6 +135,8 @@
       .meeting-tab.wrap-two { white-space:normal; flex-direction:column; align-items:center; justify-content:center; gap:1px; }
       .meeting-tab.wrap-two .topline, .meeting-tab.wrap-two .bottomline { display:block; width:100%; margin:0; text-align:center; line-height:1; }
       .meeting-tab.wrap-two .bottomline { font-size:.9em; }
+      .map-btn { padding:7px 10px; font-size:13px; }
+      .map-help { font-size:12px; }
     }
     @media (max-width:420px) {
       .meeting-tab { font-size:10px; padding:7px 2px; }
@@ -147,12 +160,14 @@
     <div class="view active hidden" id="view-predicacion"></div>
     <div class="view hidden" id="view-territorio"></div>
   </div>
+
   <script>
     const API_URL = 'https://script.google.com/macros/s/AKfycbxCzMZ59Y4rEC8mR0_eqA3_yxDT1OXRC33CqsIUFgBqu92oDBkV-5V7rzD614NSa7cIhw/exec';
-    const TERRITORY_PDF = './TERRITORIO%20FLORES%20VIOLETAS%202025.pdf#toolbar=1&navpanes=0&view=FitH';
+    const TERRITORY_SVG = './mapa-territorio.svg';
+
     const tabs = Array.from(document.querySelectorAll('.meeting-tab'));
     const views = { entresemana: document.getElementById('view-entresemana'), findesemana: document.getElementById('view-findesemana'), predicacion: document.getElementById('view-predicacion'), territorio: document.getElementById('view-territorio') };
-    let midweekWeeks = []; let midweekIndex = 0; let weekendWeeks = []; let weekendIndex = 0;
+    let midweekWeeks = [], midweekIndex = 0, weekendWeeks = [], weekendIndex = 0;
 
     function activate(viewName) {
       const valid = views[viewName] ? viewName : 'predicacion';
@@ -164,14 +179,8 @@
     tabs.forEach(tab => tab.addEventListener('click', () => activate(tab.dataset.view)));
     function esc(v) { return String(v ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\"/g,'&quot;').replace(/'/g,'&#039;'); }
     function showLoading(isLoading) { document.getElementById('loading').classList.toggle('hidden', !isLoading); Object.values(views).forEach(el => el.classList.toggle('hidden', isLoading)); }
-    function showApiError(message, detail='') {
-      showLoading(false);
-      views.predicacion.innerHTML = renderPreaching({ hasData:false, items:[] });
-      views.territorio.innerHTML = renderTerritorio();
-      views.entresemana.innerHTML = `<div class="error-state"><strong>${esc(message)}</strong>${detail ? `<small>${esc(detail)}</small>` : ''}</div>`;
-      views.findesemana.innerHTML = `<div class="error-state"><strong>${esc(message)}</strong>${detail ? `<small>${esc(detail)}</small>` : ''}</div>`;
-      activate('predicacion');
-    }
+    function showApiError(message, detail='') { showLoading(false); views.predicacion.innerHTML = renderPreaching({ hasData:false, items:[] }); views.territorio.innerHTML = renderTerritorio(); views.entresemana.innerHTML = `<div class="error-state"><strong>${esc(message)}</strong>${detail ? `<small>${esc(detail)}</small>` : ''}</div>`; views.findesemana.innerHTML = `<div class="error-state"><strong>${esc(message)}</strong>${detail ? `<small>${esc(detail)}</small>` : ''}</div>`; activate('predicacion'); }
+
     function loadData() {
       if (!API_URL) { showApiError('Falta configurar la URL del API.'); return; }
       showLoading(true);
@@ -191,15 +200,19 @@
       script.onerror = function() { cleanup(); showApiError('Error al cargar el API.','La URL respondió con error.'); };
       document.body.appendChild(script);
     }
+
     function renderAll(data) {
       initMidweek(data.entresemana || { hasData:false, weeks:[] });
       initWeekend(data.findesemana || { hasData:false, weeks:[] });
       views.predicacion.innerHTML = renderPreaching(data.predicacion || { hasData:false, items:[] });
       views.territorio.innerHTML = renderTerritorio();
+      mountSvgViewer();
     }
+
     function renderItemList(items, cls, lector='') {
       return (items || []).map(it => `<div class="item"><div class="item-title ${cls}">${it.number ? esc(it.number)+'. ' : ''}${esc(it.title || '')}</div>${it.names ? `<div class="item-person">${esc(it.names)}</div>` : ''}${it.isCongBibleStudy && lector ? `<div class="lector-below">Lector:<span class="lector-name"> ${esc(lector)}</span></div>` : ''}</div>`).join('');
     }
+
     function initMidweek(data) {
       if (!data || !data.hasData || !Array.isArray(data.weeks) || !data.weeks.length) { views.entresemana.innerHTML = '<div class="empty-state">No hay datos cargados para <strong>Vida y Ministerio</strong>.</div>'; return; }
       midweekWeeks = data.weeks.slice(); let idx = midweekWeeks.findIndex(w => w.weekKey === data.currentWeekKey); if (idx < 0) idx = 0; midweekIndex = idx; paintCurrentMidweekWeek();
@@ -207,10 +220,11 @@
     function paintCurrentMidweekWeek() {
       const d = midweekWeeks[midweekIndex]; if (!d) return;
       views.entresemana.innerHTML = `<div class="card"><div class="head"><div class="head-nav"><button class="nav-arrow" id="mw-prev" ${midweekIndex === 0 ? 'disabled' : ''}>◀</button><div class="head-title">${esc(d.weekTitle || '')}</div><button class="nav-arrow" id="mw-next" ${midweekIndex === midweekWeeks.length - 1 ? 'disabled' : ''}>▶</button></div></div>${d.president ? `<div class="sub">Presidente: ${esc(d.president)}</div>` : ''}<div class="block"><div class="section-title s-blue">TESOROS DE LA BIBLIA ${d.openingSong ? `<span class="song">Canción ${esc(d.openingSong)}</span>` : ''}</div>${renderItemList(d.treasures, 'blue-t')}<div class="section-title s-gold">SEAMOS MEJORES MAESTROS</div>${renderItemList(d.teachers, 'gold-t')}<div class="section-title s-red">NUESTRA VIDA CRISTIANA ${d.middleSong ? `<span class="song">Canción ${esc(d.middleSong)}</span>` : ''}</div>${renderItemList(d.life, 'red-t', d.lector || '')}</div>${d.closingSong ? `<div class="footer-note">Palabras de conclusión y canción ${esc(d.closingSong)}</div>` : ''}${d.prayerName ? `<div class="footer-prayer">Oración conclusión&nbsp;&nbsp;${esc(d.prayerName)}</div>` : ''}${d.cleaningLabel ? `<div class="cleaning">${esc(d.cleaningLabel)}</div>` : ''}</div>`;
-      const prev = document.getElementById('mw-prev'); const next = document.getElementById('mw-next');
+      const prev = document.getElementById('mw-prev'), next = document.getElementById('mw-next');
       if (prev) prev.onclick = () => { if (midweekIndex > 0) { midweekIndex--; paintCurrentMidweekWeek(); } };
       if (next) next.onclick = () => { if (midweekIndex < midweekWeeks.length - 1) { midweekIndex++; paintCurrentMidweekWeek(); } };
     }
+
     function initWeekend(data) {
       if (!data || !data.hasData || !Array.isArray(data.weeks) || !data.weeks.length) { views.findesemana.innerHTML = '<div class="empty-state">No hay datos cargados para <strong>Conferencia y Atalaya</strong>.</div>'; return; }
       weekendWeeks = data.weeks.slice(); let idx = weekendWeeks.findIndex(w => w.weekKey === data.currentWeekKey); if (idx < 0) idx = 0; weekendIndex = idx; paintCurrentWeekendWeek();
@@ -219,7 +233,7 @@
     function paintCurrentWeekendWeek() {
       const d = weekendWeeks[weekendIndex]; if (!d) return;
       views.findesemana.innerHTML = `<div class="wk-wrap"><div class="wk-card"><div class="wk-date"><div class="wk-date-nav"><button class="nav-arrow" id="wk-prev" ${weekendIndex === 0 ? 'disabled' : ''}>◀</button><div class="wk-date-title">${esc(d.headerTitle || '')}</div><button class="nav-arrow" id="wk-next" ${weekendIndex === weekendWeeks.length - 1 ? 'disabled' : ''}>▶</button></div></div><div class="wk-body">${d.president ? `<div class="wk-president">PRESIDENTE: <span class="name">${esc(d.president)}</span></div>` : ''}${d.publicTalk ? `<div class="wk-band wk-green-band"><div class="wk-band-left"><div class="wk-band-title">DISCURSO PÚBLICO</div></div>${d.publicTalk.song ? `<div class="wk-band-song">Canción ${esc(d.publicTalk.song)}</div>` : ''}</div><div class="wk-main-title">“${esc(d.publicTalk.title || '')}”</div>${d.publicTalk.speaker ? `<div class="wk-main-speaker">${esc(d.publicTalk.speaker)}</div>` : ''}${d.publicTalk.subtitle ? `<div class="wk-main-sub">${esc(d.publicTalk.subtitle)}</div>` : ''}` : ''}${d.watchtower ? `<div class="wk-band wk-red-band"><div class="wk-band-left"><div class="wk-band-title">REUNIÓN LA ATALAYA</div></div>${d.watchtower.song ? `<div class="wk-band-song">Canción ${esc(d.watchtower.song)}</div>` : ''}</div><div class="wk-watch-title">“${esc(d.watchtower.title || '')}”</div>${d.watchtower.conductor ? `<div class="wk-watch-conductor">${esc(d.watchtower.conductor)}</div>` : ''}${d.watchtower.lector ? `<div class="wk-watch-lector">Lector: ${esc(d.watchtower.lector)}</div>` : ''}` : ''}${d.closingSong ? `<div class="wk-foot-song">Canción ${esc(d.closingSong)}</div>` : ''}${d.cleaningLabel ? `<div class="wk-cleaning">${esc(d.cleaningLabel)}</div>` : ''}<div class="wk-support">${supportLine('Acomodadores', d.support && d.support.acomodadores)}${supportLine('Micrófonos', d.support && d.support.microfonos)}${supportLine('Hospitalidad', d.support && d.support.hospitalidad)}</div></div></div></div>`;
-      const prev = document.getElementById('wk-prev'); const next = document.getElementById('wk-next');
+      const prev = document.getElementById('wk-prev'), next = document.getElementById('wk-next');
       if (prev) prev.onclick = () => { if (weekendIndex > 0) { weekendIndex--; paintCurrentWeekendWeek(); } };
       if (next) next.onclick = () => { if (weekendIndex < weekendWeeks.length - 1) { weekendIndex++; paintCurrentWeekendWeek(); } };
     }
@@ -227,44 +241,32 @@
     const DAY_ORDER = ['lunes','martes','miercoles','jueves','viernes','sabado','domingo'];
     const DAY_LABEL = { lunes:'Lunes', martes:'Martes', miercoles:'Miércoles', jueves:'Jueves', viernes:'Viernes', sabado:'Sábado', domingo:'Domingo' };
     function normText(v) { return String(v ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase(); }
-    function toMinutes(hhmm) {
-      if (!hhmm) return null; const p = String(hhmm).split(':'); if (p.length < 2) return null;
-      const h = Number(p[0]), m = Number(p[1]); if (Number.isNaN(h) || Number.isNaN(m)) return null; return h*60 + m;
-    }
+    function toMinutes(hhmm) { if (!hhmm) return null; const p = String(hhmm).split(':'); if (p.length < 2) return null; const h = Number(p[0]), m = Number(p[1]); if (Number.isNaN(h) || Number.isNaN(m)) return null; return h*60 + m; }
     function formatTimeRange(item) { if (item.horaTexto) return item.horaTexto; if (item.horaInicioTexto && item.horaFinTexto) return `${item.horaInicioTexto} - ${item.horaFinTexto}`; return ''; }
     function getGroupNumber(point) { const m = String(point || '').match(/grupo\s*(\d+)/i); return m ? Number(m[1]) : null; }
     function isGroupPoint(point) { return getGroupNumber(point) !== null; }
     function normalizeGroupLabel(point) { const n = getGroupNumber(point); return n === null ? (point || '') : `GRUPO ${n}`; }
     function comparePredShiftItems(a, b) {
-      const ga = getGroupNumber(a.puntoReunion); const gb = getGroupNumber(b.puntoReunion);
+      const ga = getGroupNumber(a.puntoReunion), gb = getGroupNumber(b.puntoReunion);
       if (ga !== null && gb !== null && ga !== gb) return ga - gb;
       if (ga !== null && gb === null) return -1;
       if (ga === null && gb !== null) return 1;
-      const ta = toMinutes(a.horaInicio || '') ?? 9999; const tb = toMinutes(b.horaInicio || '') ?? 9999;
+      const ta = toMinutes(a.horaInicio || '') ?? 9999, tb = toMinutes(b.horaInicio || '') ?? 9999;
       if (ta !== tb) return ta - tb;
       return String(a.puntoReunion || '').localeCompare(String(b.puntoReunion || ''));
     }
-
     function preprocessPredication(raw) {
       const items = Array.isArray(raw.items) ? raw.items : [];
       return items.map((it, idx) => {
         const start = toMinutes(it.horaInicio || '');
         const shiftNorm = normText(it.turno || (start !== null && start < 720 ? 'Mañana' : 'Noche'));
-        return {
-          id: it.id || `p${idx}`,
-          dia: it.dia || '', diaNorm: normText(it.dia || ''), fechaISO: it.fechaISO || it.fecha || '',
-          turno: it.turno || (shiftNorm.includes('noche') ? 'Noche' : 'Mañana'), turnoNorm: shiftNorm.includes('noche') ? 'noche' : 'mañana',
-          horaInicio: it.horaInicio || '', horaFin: it.horaFin || '', horaInicioTexto: it.horaInicioTexto || '', horaFinTexto: it.horaFinTexto || '', horaTexto: it.horaTexto || '',
-          puntoReunion: it.puntoReunion || it.punto || '', conductor: it.conductor || '', territorio: it.territorio || '', notas: it.notas || ''
-        };
+        return { id: it.id || `p${idx}`, dia: it.dia || '', diaNorm: normText(it.dia || ''), fechaISO: it.fechaISO || it.fecha || '', turno: it.turno || (shiftNorm.includes('noche') ? 'Noche' : 'Mañana'), turnoNorm: shiftNorm.includes('noche') ? 'noche' : 'mañana', horaInicio: it.horaInicio || '', horaFin: it.horaFin || '', horaInicioTexto: it.horaInicioTexto || '', horaFinTexto: it.horaFinTexto || '', horaTexto: it.horaTexto || '', puntoReunion: it.puntoReunion || it.punto || '', conductor: it.conductor || '', territorio: it.territorio || '', notas: it.notas || '' };
       }).sort((a,b) => (a.fechaISO || '').localeCompare(b.fechaISO || '') || comparePredShiftItems(a,b));
     }
-
     function isMeetingBlock(it) { return normText(it.puntoReunion || '').includes('vida y ministerio'); }
     function getPredChip(turnoNorm) { return `<span class="pred-chip ${turnoNorm === 'noche' ? 'noche' : 'manana'}">${turnoNorm === 'noche' ? 'Noche' : 'Mañana'}</span>`; }
     function getHeadline(items) {
-      if (!items.length) return null;
-      const now = new Date(); const todayISO = now.toISOString().slice(0,10); const mins = now.getHours()*60 + now.getMinutes();
+      if (!items.length) return null; const now = new Date(), todayISO = now.toISOString().slice(0,10), mins = now.getHours()*60 + now.getMinutes();
       const active = items.find(it => it.fechaISO === todayISO && it.horaInicio && it.horaFin && mins >= toMinutes(it.horaInicio) && mins < toMinutes(it.horaFin));
       if (active) return { mode:'activo', item:active };
       const upcomingToday = items.find(it => it.fechaISO === todayISO && it.horaInicio && mins < toMinutes(it.horaInicio));
@@ -272,47 +274,140 @@
       const future = items.find(it => (it.fechaISO || '') > todayISO || ((it.fechaISO || '') === todayISO && it.horaInicio && mins < toMinutes(it.horaInicio)));
       return { mode:'proximo', item: future || items[0] };
     }
-
     function renderPredEntry(it) {
-      const meeting = isMeetingBlock(it);
-      const group = isGroupPoint(it.puntoReunion || '');
-      if (group) {
-        return `<div class="pred-entry"><div class="pred-shift-point">${esc(normalizeGroupLabel(it.puntoReunion || ''))}</div>${it.territorio ? `<div class="pred-shift-territory">${esc(it.territorio)}</div>` : ''}${it.notas ? `<span class="pred-shift-note">${esc(it.notas)}</span>` : ''}</div>`;
-      }
+      const meeting = isMeetingBlock(it), group = isGroupPoint(it.puntoReunion || '');
+      if (group) return `<div class="pred-entry"><div class="pred-shift-point">${esc(normalizeGroupLabel(it.puntoReunion || ''))}</div>${it.territorio ? `<div class="pred-shift-territory">${esc(it.territorio)}</div>` : ''}${it.notas ? `<span class="pred-shift-note">${esc(it.notas)}</span>` : ''}</div>`;
       return `<div class="pred-entry"><div class="pred-shift-point">${esc(it.puntoReunion || '')}</div>${!meeting && it.conductor ? `<div class="pred-shift-conductor">${esc(it.conductor)}</div>` : ''}${!meeting && it.territorio ? `<div class="pred-shift-territory">Territorio: ${esc(it.territorio)}</div>` : ''}${!meeting && it.notas ? `<span class="pred-shift-note">${esc(it.notas)}</span>` : ''}</div>`;
     }
-
     function renderPredShiftList(items, shiftNorm) {
       if (!items || !items.length) return '<div class="pred-empty">Sin turno</div>';
-      const sorted = items.slice().sort(comparePredShiftItems);
-      const first = sorted[0];
+      const sorted = items.slice().sort(comparePredShiftItems), first = sorted[0];
       return `<div class="pred-shift-top">${getPredChip(shiftNorm)}<div class="pred-shift-time">${esc(formatTimeRange(first))}</div></div><div class="pred-shift-group">${sorted.map(renderPredEntry).join('')}</div>`;
     }
-
     function renderPreaching(d) {
-      const items = preprocessPredication(d || { hasData:false, items:[] });
-      const weekLabel = d && d.semanaTexto ? d.semanaTexto : '';
-      const headline = getHeadline(items);
-      const top = headline ? (() => {
-        const it = headline.item; const meeting = isMeetingBlock(it); const group = isGroupPoint(it.puntoReunion || '');
-        return `<div class="pred-next"><div class="pred-next-label">${headline.mode === 'activo' ? 'Turno actual' : 'Próxima predicación'}</div><div class="pred-next-head"><div><div class="pred-dayline">${esc(it.dia || '')}</div><div class="pred-hours">${esc(formatTimeRange(it))}</div></div>${getPredChip(it.turnoNorm)}</div><div class="pred-next-body"><div class="pred-point-big">${esc(group ? normalizeGroupLabel(it.puntoReunion || '') : (it.puntoReunion || 'Sin definir'))}</div>${group ? (it.territorio ? `<div class="pred-territory-line">${esc(it.territorio)}</div>` : '') : (!meeting && it.conductor ? `<div class="pred-conductor">${esc(it.conductor)}</div>` : '')}${!group && !meeting && it.territorio ? `<div class="pred-territory-line">Territorio: ${esc(it.territorio)}</div>` : ''}${!meeting && it.notas ? `<span class="pred-shift-note">${esc(it.notas)}</span>` : ''}</div></div>`;
-      })() : `<div class="pred-next"><div class="pred-next-label">Próxima predicación</div><div class="empty-state">No hay turnos cargados todavía.</div></div>`;
-
+      const items = preprocessPredication(d || { hasData:false, items:[] }), weekLabel = d && d.semanaTexto ? d.semanaTexto : '', headline = getHeadline(items);
+      const top = headline ? (() => { const it = headline.item, meeting = isMeetingBlock(it), group = isGroupPoint(it.puntoReunion || ''); return `<div class="pred-next"><div class="pred-next-label">${headline.mode === 'activo' ? 'Turno actual' : 'Próxima predicación'}</div><div class="pred-next-head"><div><div class="pred-dayline">${esc(it.dia || '')}</div><div class="pred-hours">${esc(formatTimeRange(it))}</div></div>${getPredChip(it.turnoNorm)}</div><div class="pred-next-body"><div class="pred-point-big">${esc(group ? normalizeGroupLabel(it.puntoReunion || '') : (it.puntoReunion || 'Sin definir'))}</div>${group ? (it.territorio ? `<div class="pred-territory-line">${esc(it.territorio)}</div>` : '') : (!meeting && it.conductor ? `<div class="pred-conductor">${esc(it.conductor)}</div>` : '')}${!group && !meeting && it.territorio ? `<div class="pred-territory-line">Territorio: ${esc(it.territorio)}</div>` : ''}${!meeting && it.notas ? `<span class="pred-shift-note">${esc(it.notas)}</span>` : ''}</div></div>`; })() : `<div class="pred-next"><div class="pred-next-label">Próxima predicación</div><div class="empty-state">No hay turnos cargados todavía.</div></div>`;
       const grouped = Object.fromEntries(DAY_ORDER.map(day => [day, { manana:[], noche:[] }]));
-      items.forEach(it => {
-        if (!grouped[it.diaNorm]) return;
-        if (it.turnoNorm === 'mañana') grouped[it.diaNorm].manana.push(it);
-        if (it.turnoNorm === 'noche') grouped[it.diaNorm].noche.push(it);
-      });
-
-      const daysHtml = DAY_ORDER.map(day => {
-        const g = grouped[day];
-        return `<div class="pred-day-card"><div class="pred-day-head"><div class="pred-day-name">${DAY_LABEL[day]}</div></div><div class="pred-day-grid"><div class="pred-shift-col">${renderPredShiftList(g.manana, 'mañana')}</div><div class="pred-shift-col">${renderPredShiftList(g.noche, 'noche')}</div></div></div>`;
-      }).join('');
-
+      items.forEach(it => { if (!grouped[it.diaNorm]) return; if (it.turnoNorm === 'mañana') grouped[it.diaNorm].manana.push(it); if (it.turnoNorm === 'noche') grouped[it.diaNorm].noche.push(it); });
+      const daysHtml = DAY_ORDER.map(day => { const g = grouped[day]; return `<div class="pred-day-card"><div class="pred-day-head"><div class="pred-day-name">${DAY_LABEL[day]}</div></div><div class="pred-day-grid"><div class="pred-shift-col">${renderPredShiftList(g.manana, 'mañana')}</div><div class="pred-shift-col">${renderPredShiftList(g.noche, 'noche')}</div></div></div>`; }).join('');
       return `<div class="pred-wrap">${top}<div class="pred-program"><div class="pred-program-head"><div><div class="pred-program-title">Programa completo de predicación</div>${weekLabel ? `<div class="pred-week-label">${esc(weekLabel)}</div>` : ''}</div></div><div class="pred-days">${daysHtml || '<div class="empty-state">No hay turnos de predicación cargados todavía.</div>'}</div></div></div>`;
     }
-    function renderTerritorio() { return `<div class="pdf-wrap"><iframe class="pdf-frame" src="${TERRITORY_PDF}" title="Mapa territorio"></iframe></div>`; }
+
+    function renderTerritorio() {
+      return `<div class="map-wrap"><div class="map-toolbar"><div class="map-actions"><button class="map-btn" id="map-zoom-out" type="button">−</button><button class="map-btn" id="map-zoom-in" type="button">+</button><button class="map-btn" id="map-fit" type="button">Ajustar</button><button class="map-btn" id="map-reset" type="button">100%</button></div><div class="map-help">Usa dos dedos para alejar/acercar o arrastra para moverte.</div></div><div class="map-viewport" id="map-viewport"><div class="map-stage" id="map-stage"><img class="map-svg" id="map-svg" src="${TERRITORY_SVG}" alt="Mapa del territorio"></div></div><div class="map-status" id="map-status">Cargando mapa SVG…</div></div>`;
+    }
+
+    function mountSvgViewer() {
+      const viewport = document.getElementById('map-viewport');
+      const stage = document.getElementById('map-stage');
+      const img = document.getElementById('map-svg');
+      const status = document.getElementById('map-status');
+      if (!viewport || !stage || !img || !status) return;
+
+      const state = { scale:1, minScale:1, maxScale:12, x:0, y:0, dragging:false, pointers:new Map(), startX:0, startY:0, baseX:0, baseY:0, pinchStartDist:0, pinchStartScale:1, naturalWidth:0, naturalHeight:0 };
+
+      function setStatus() { status.textContent = `Zoom: ${Math.round(state.scale * 100)}%`; }
+      function apply() { stage.style.transform = `translate(${state.x}px, ${state.y}px) scale(${state.scale})`; setStatus(); }
+      function clamp() {
+        const vw = viewport.clientWidth, vh = viewport.clientHeight;
+        const sw = state.naturalWidth * state.scale, sh = state.naturalHeight * state.scale;
+        const minX = Math.min(0, vw - sw), minY = Math.min(0, vh - sh);
+        const maxX = sw < vw ? (vw - sw) / 2 : 0, maxY = sh < vh ? (vh - sh) / 2 : 0;
+        state.x = Math.min(maxX, Math.max(minX, state.x));
+        state.y = Math.min(maxY, Math.max(minY, state.y));
+      }
+      function fitToViewport() {
+        const vw = viewport.clientWidth, vh = viewport.clientHeight;
+        if (!state.naturalWidth || !state.naturalHeight || !vw || !vh) return;
+        const scaleX = vw / state.naturalWidth, scaleY = vh / state.naturalHeight;
+        state.minScale = Math.min(scaleX, scaleY);
+        state.scale = state.minScale;
+        const sw = state.naturalWidth * state.scale, sh = state.naturalHeight * state.scale;
+        state.x = (vw - sw) / 2; state.y = (vh - sh) / 2;
+        apply();
+      }
+      function zoomAt(factor, cx, cy) {
+        const newScale = Math.min(state.maxScale, Math.max(state.minScale, state.scale * factor));
+        const scaleFactor = newScale / state.scale;
+        state.x = cx - (cx - state.x) * scaleFactor;
+        state.y = cy - (cy - state.y) * scaleFactor;
+        state.scale = newScale;
+        clamp(); apply();
+      }
+      function pointerDistance() {
+        const vals = Array.from(state.pointers.values());
+        if (vals.length < 2) return 0;
+        const dx = vals[0].x - vals[1].x, dy = vals[0].y - vals[1].y;
+        return Math.hypot(dx, dy);
+      }
+      function pointerCenter() {
+        const vals = Array.from(state.pointers.values());
+        if (!vals.length) return {x:viewport.clientWidth/2, y:viewport.clientHeight/2};
+        const x = vals.reduce((s,p)=>s+p.x,0)/vals.length, y = vals.reduce((s,p)=>s+p.y,0)/vals.length;
+        return {x,y};
+      }
+
+      img.addEventListener('load', () => {
+        state.naturalWidth = img.naturalWidth || 1000;
+        state.naturalHeight = img.naturalHeight || 1000;
+        status.textContent = 'Mapa cargado';
+        fitToViewport();
+      });
+      img.addEventListener('error', () => { status.textContent = 'No se pudo cargar mapa-territorio.svg. Súbelo junto al index.html.'; });
+
+      viewport.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const rect = viewport.getBoundingClientRect();
+        const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
+        zoomAt(e.deltaY < 0 ? 1.12 : 1/1.12, cx, cy);
+      }, { passive:false });
+
+      viewport.addEventListener('pointerdown', (e) => {
+        viewport.setPointerCapture(e.pointerId);
+        state.pointers.set(e.pointerId, {x:e.clientX - viewport.getBoundingClientRect().left, y:e.clientY - viewport.getBoundingClientRect().top});
+        if (state.pointers.size === 1) {
+          state.dragging = true; stage.classList.add('dragging');
+          state.startX = e.clientX; state.startY = e.clientY; state.baseX = state.x; state.baseY = state.y;
+        } else if (state.pointers.size === 2) {
+          state.dragging = false; stage.classList.remove('dragging');
+          state.pinchStartDist = pointerDistance(); state.pinchStartScale = state.scale;
+        }
+      });
+      viewport.addEventListener('pointermove', (e) => {
+        if (!state.pointers.has(e.pointerId)) return;
+        const rect = viewport.getBoundingClientRect();
+        state.pointers.set(e.pointerId, {x:e.clientX - rect.left, y:e.clientY - rect.top});
+        if (state.pointers.size === 2) {
+          const dist = pointerDistance();
+          if (!state.pinchStartDist) return;
+          const center = pointerCenter();
+          const newScale = Math.min(state.maxScale, Math.max(state.minScale, state.pinchStartScale * (dist / state.pinchStartDist)));
+          const scaleFactor = newScale / state.scale;
+          state.x = center.x - (center.x - state.x) * scaleFactor;
+          state.y = center.y - (center.y - state.y) * scaleFactor;
+          state.scale = newScale; clamp(); apply();
+          return;
+        }
+        if (state.dragging && state.pointers.size === 1) {
+          state.x = state.baseX + (e.clientX - state.startX);
+          state.y = state.baseY + (e.clientY - state.startY);
+          clamp(); apply();
+        }
+      });
+      function endPointer(e) { state.pointers.delete(e.pointerId); if (state.pointers.size < 2) state.pinchStartDist = 0; if (!state.pointers.size) { state.dragging = false; stage.classList.remove('dragging'); } }
+      viewport.addEventListener('pointerup', endPointer);
+      viewport.addEventListener('pointercancel', endPointer);
+      viewport.addEventListener('pointerleave', endPointer);
+
+      document.getElementById('map-zoom-in')?.addEventListener('click', () => zoomAt(1.2, viewport.clientWidth/2, viewport.clientHeight/2));
+      document.getElementById('map-zoom-out')?.addEventListener('click', () => zoomAt(1/1.2, viewport.clientWidth/2, viewport.clientHeight/2));
+      document.getElementById('map-fit')?.addEventListener('click', fitToViewport);
+      document.getElementById('map-reset')?.addEventListener('click', () => {
+        state.scale = 1; state.x = (viewport.clientWidth - state.naturalWidth) / 2; state.y = (viewport.clientHeight - state.naturalHeight) / 2; clamp(); apply();
+      });
+      window.addEventListener('resize', () => { if (state.scale <= state.minScale + 0.001) fitToViewport(); else { clamp(); apply(); } });
+    }
+
     loadData();
   </script>
 </body>
