@@ -179,6 +179,7 @@
     }
     tabs.forEach(tab => tab.addEventListener('click', () => activate(tab.dataset.view)));
     function esc(v) { return String(v ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\"/g,'&quot;').replace(/'/g,'&#039;'); }
+    function normText(v) { return String(v ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase(); }
     function showLoading(isLoading) { document.getElementById('loading').classList.toggle('hidden', !isLoading); Object.values(views).forEach(el => el.classList.toggle('hidden', isLoading)); }
     function showApiError(message, detail='') { showLoading(false); views.entresemana.innerHTML = `<div class="error-state"><strong>${esc(message)}</strong>${detail ? `<small>${esc(detail)}</small>` : ''}</div>`; views.findesemana.innerHTML = `<div class="error-state"><strong>${esc(message)}</strong>${detail ? `<small>${esc(detail)}</small>` : ''}</div>`; activate('entresemana'); }
 
@@ -221,8 +222,11 @@
     function paintCurrentMidweekWeek() {
       const d = midweekWeeks[midweekIndex]; if (!d) return;
       const navHtml = `<div class="head"><div class="head-nav"><button class="nav-arrow" id="mw-prev" ${midweekIndex === 0 ? 'disabled' : ''}>◀</button><div class="head-title">${esc(d.weekTitle || '')}</div><button class="nav-arrow" id="mw-next" ${midweekIndex === midweekWeeks.length - 1 ? 'disabled' : ''}>▶</button></div></div>`;
-      if (d.isAssembly) {
-        views.entresemana.innerHTML = `<div class="card">${navHtml}${renderAssemblyBlock(d.assemblyName, d.assemblyTheme)}</div>`;
+      const looksLikeAssembly = normText(d.president || '').includes('asamblea');
+      if (d.isAssembly || looksLikeAssembly) {
+        const name = d.assemblyName || d.president || '';
+        const theme = d.assemblyTheme || '';
+        views.entresemana.innerHTML = `<div class="card">${navHtml}${renderAssemblyBlock(name, theme)}</div>`;
       } else {
         views.entresemana.innerHTML = `<div class="card">${navHtml}${d.president ? `<div class="sub">Presidente: ${esc(d.president)}</div>` : ''}<div class="block"><div class="section-title s-blue">TESOROS DE LA BIBLIA ${d.openingSong ? `<span class="song">Canción ${esc(d.openingSong)}</span>` : ''}</div>${renderItemList(d.treasures, 'blue-t')}<div class="section-title s-gold">SEAMOS MEJORES MAESTROS</div>${renderItemList(d.teachers, 'gold-t')}<div class="section-title s-red">NUESTRA VIDA CRISTIANA ${d.middleSong ? `<span class="song">Canción ${esc(d.middleSong)}</span>` : ''}</div>${renderItemList(d.life, 'red-t', d.lector || '')}</div>${d.closingSong ? `<div class="footer-note">Palabras de conclusión y canción ${esc(d.closingSong)}</div>` : ''}${d.prayerName ? `<div class="footer-prayer">Oración conclusión&nbsp;&nbsp;${esc(d.prayerName)}</div>` : ''}${d.cleaningLabel ? `<div class="cleaning">${esc(d.cleaningLabel)}</div>` : ''}</div>`;
       }
@@ -239,8 +243,11 @@
     function paintCurrentWeekendWeek() {
       const d = weekendWeeks[weekendIndex]; if (!d) return;
       const navHtml = `<div class="wk-date"><div class="wk-date-nav"><button class="nav-arrow" id="wk-prev" ${weekendIndex === 0 ? 'disabled' : ''}>◀</button><div class="wk-date-title">${esc(d.headerTitle || '')}</div><button class="nav-arrow" id="wk-next" ${weekendIndex === weekendWeeks.length - 1 ? 'disabled' : ''}>▶</button></div></div>`;
-      if (d.isAssembly) {
-        views.findesemana.innerHTML = `<div class="wk-wrap"><div class="wk-card">${navHtml}<div class="wk-body">${renderAssemblyBlock(d.assemblyName, d.assemblyTheme)}</div></div></div>`;
+      const looksLikeAssembly = normText(d.president || '').includes('asamblea');
+      if (d.isAssembly || looksLikeAssembly) {
+        const name = d.assemblyName || d.president || '';
+        const theme = d.assemblyTheme || '';
+        views.findesemana.innerHTML = `<div class="wk-wrap"><div class="wk-card">${navHtml}<div class="wk-body">${renderAssemblyBlock(name, theme)}</div></div></div>`;
       } else {
         views.findesemana.innerHTML = `<div class="wk-wrap"><div class="wk-card">${navHtml}<div class="wk-body">${d.president ? `<div class="wk-president">PRESIDENTE: <span class="name">${esc(d.president)}</span></div>` : ''}${d.publicTalk ? `<div class="wk-band wk-green-band"><div class="wk-band-left"><div class="wk-band-title">DISCURSO PÚBLICO</div></div>${d.publicTalk.song ? `<div class="wk-band-song">Canción ${esc(d.publicTalk.song)}</div>` : ''}</div><div class="wk-main-title">“${esc(d.publicTalk.title || '')}”</div>${d.publicTalk.speaker ? `<div class="wk-main-speaker">${esc(d.publicTalk.speaker)}</div>` : ''}${d.publicTalk.subtitle ? `<div class="wk-main-sub">${esc(d.publicTalk.subtitle)}</div>` : ''}` : ''}${d.watchtower ? `<div class="wk-band wk-red-band"><div class="wk-band-left"><div class="wk-band-title">REUNIÓN LA ATALAYA</div></div>${d.watchtower.song ? `<div class="wk-band-song">Canción ${esc(d.watchtower.song)}</div>` : ''}</div><div class="wk-watch-title">“${esc(d.watchtower.title || '')}”</div>${d.watchtower.conductor ? `<div class="wk-watch-conductor">${esc(d.watchtower.conductor)}</div>` : ''}${d.watchtower.lector ? `<div class="wk-watch-lector">Lector: ${esc(d.watchtower.lector)}</div>` : ''}` : ''}${d.closingSong ? `<div class="wk-foot-song">Canción ${esc(d.closingSong)}</div>` : ''}${d.cleaningLabel ? `<div class="wk-cleaning">${esc(d.cleaningLabel)}</div>` : ''}<div class="wk-support">${supportLine('Acomodadores', d.support && d.support.acomodadores)}${supportLine('Micrófonos', d.support && d.support.microfonos)}${supportLine('Hospitalidad', d.support && d.support.hospitalidad)}</div></div></div></div>`;
       }
