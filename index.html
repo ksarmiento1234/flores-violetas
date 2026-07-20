@@ -10,7 +10,7 @@
     html, body { margin:0; padding:0; }
     body { font-family:Arial,Helvetica,sans-serif; background:var(--bg); color:var(--text); padding:14px; }
     .app { max-width:980px; margin:0 auto; }
-    .meeting-menu { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px; margin:0 0 12px; width:100%; }
+    .meeting-menu { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; margin:0 0 12px; width:100%; }
     .meeting-tab { border:1px solid #cfd6d8; background:var(--tab); color:#23443f; padding:11px 8px; border-radius:999px; font-size:clamp(11px,2.6vw,14px); font-weight:800; cursor:pointer; text-align:center; width:100%; line-height:1.08; min-height:42px; display:flex; align-items:center; justify-content:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .meeting-tab.active { background:var(--green); color:#fff; border-color:var(--green); box-shadow:0 2px 8px rgba(11,110,99,.18); }
     .meeting-tab .topline, .meeting-tab .bottomline { display:inline; }
@@ -150,28 +150,23 @@
 <body>
   <div class="app">
     <div class="meeting-menu" role="tablist" aria-label="Tipo de reunión">
-      <button class="meeting-tab active" data-view="predicacion" type="button">PREDICACIÓN</button>
-      <button class="meeting-tab" data-view="territorio" type="button">MAPA</button>
-      <button class="meeting-tab wrap-two" data-view="entresemana" type="button"><span class="topline">VIDA Y</span><span class="bottomline">MINISTERIO</span></button>
+      <button class="meeting-tab wrap-two active" data-view="entresemana" type="button"><span class="topline">VIDA Y</span><span class="bottomline">MINISTERIO</span></button>
       <button class="meeting-tab wrap-two" data-view="findesemana" type="button"><span class="topline">CONFERENCIA</span><span class="bottomline">Y ATALAYA</span></button>
     </div>
     <div class="loading-state" id="loading">Cargando roles…</div>
-    <div class="view hidden" id="view-entresemana"></div>
+    <div class="view active hidden" id="view-entresemana"></div>
     <div class="view hidden" id="view-findesemana"></div>
-    <div class="view active hidden" id="view-predicacion"></div>
-    <div class="view hidden" id="view-territorio"></div>
   </div>
 
   <script>
     const API_URL = 'https://script.google.com/macros/s/AKfycbxCzMZ59Y4rEC8mR0_eqA3_yxDT1OXRC33CqsIUFgBqu92oDBkV-5V7rzD614NSa7cIhw/exec';
-    const TERRITORY_SVG = './mapa-territorio.svg';
 
     const tabs = Array.from(document.querySelectorAll('.meeting-tab'));
-    const views = { entresemana: document.getElementById('view-entresemana'), findesemana: document.getElementById('view-findesemana'), predicacion: document.getElementById('view-predicacion'), territorio: document.getElementById('view-territorio') };
+    const views = { entresemana: document.getElementById('view-entresemana'), findesemana: document.getElementById('view-findesemana') };
     let midweekWeeks = [], midweekIndex = 0, weekendWeeks = [], weekendIndex = 0;
 
     function activate(viewName) {
-      const valid = views[viewName] ? viewName : 'predicacion';
+      const valid = views[viewName] ? viewName : 'entresemana';
       tabs.forEach(tab => tab.classList.toggle('active', tab.dataset.view === valid));
       Object.keys(views).forEach(key => views[key].classList.toggle('active', key === valid));
       if (location.hash !== '#' + valid) history.replaceState(null, '', '#' + valid);
@@ -180,7 +175,7 @@
     tabs.forEach(tab => tab.addEventListener('click', () => activate(tab.dataset.view)));
     function esc(v) { return String(v ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\"/g,'&quot;').replace(/'/g,'&#039;'); }
     function showLoading(isLoading) { document.getElementById('loading').classList.toggle('hidden', !isLoading); Object.values(views).forEach(el => el.classList.toggle('hidden', isLoading)); }
-    function showApiError(message, detail='') { showLoading(false); views.predicacion.innerHTML = renderPreaching({ hasData:false, items:[] }); views.territorio.innerHTML = renderTerritorio(); views.entresemana.innerHTML = `<div class="error-state"><strong>${esc(message)}</strong>${detail ? `<small>${esc(detail)}</small>` : ''}</div>`; views.findesemana.innerHTML = `<div class="error-state"><strong>${esc(message)}</strong>${detail ? `<small>${esc(detail)}</small>` : ''}</div>`; activate('predicacion'); }
+    function showApiError(message, detail='') { showLoading(false); views.entresemana.innerHTML = `<div class="error-state"><strong>${esc(message)}</strong>${detail ? `<small>${esc(detail)}</small>` : ''}</div>`; views.findesemana.innerHTML = `<div class="error-state"><strong>${esc(message)}</strong>${detail ? `<small>${esc(detail)}</small>` : ''}</div>`; activate('entresemana'); }
 
     function loadData() {
       if (!API_URL) { showApiError('Falta configurar la URL del API.'); return; }
@@ -196,7 +191,7 @@
         if (!data || data.ok !== true) { showApiError('El API respondió con datos inválidos.', JSON.stringify(data || {})); return; }
         renderAll(data); showLoading(false);
         const requested = (location.hash || '').replace('#','').trim().toLowerCase();
-        activate(requested || 'predicacion');
+        activate(requested || 'entresemana');
       };
       script.onerror = function() { cleanup(); showApiError('Error al cargar el API.','La URL respondió con error.'); };
       document.body.appendChild(script);
@@ -205,9 +200,6 @@
     function renderAll(data) {
       initMidweek(data.entresemana || { hasData:false, weeks:[] });
       initWeekend(data.findesemana || { hasData:false, weeks:[] });
-      views.predicacion.innerHTML = renderPreaching(data.predicacion || { hasData:false, items:[] });
-      views.territorio.innerHTML = renderTerritorio();
-      mountSvgViewer();
     }
 
     function renderItemList(items, cls, lector='') {
@@ -237,296 +229,6 @@
       const prev = document.getElementById('wk-prev'), next = document.getElementById('wk-next');
       if (prev) prev.onclick = () => { if (weekendIndex > 0) { weekendIndex--; paintCurrentWeekendWeek(); } };
       if (next) next.onclick = () => { if (weekendIndex < weekendWeeks.length - 1) { weekendIndex++; paintCurrentWeekendWeek(); } };
-    }
-
-    const DAY_ORDER = ['lunes','martes','miercoles','jueves','viernes','sabado','domingo'];
-    const DAY_LABEL = { lunes:'Lunes', martes:'Martes', miercoles:'Miércoles', jueves:'Jueves', viernes:'Viernes', sabado:'Sábado', domingo:'Domingo' };
-    function normText(v) { return String(v ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase(); }
-    function toMinutes(hhmm) { if (!hhmm) return null; const p = String(hhmm).split(':'); if (p.length < 2) return null; const h = Number(p[0]), m = Number(p[1]); if (Number.isNaN(h) || Number.isNaN(m)) return null; return h*60 + m; }
-    function formatTimeRange(item) { if (item.horaTexto) return item.horaTexto; if (item.horaInicioTexto && item.horaFinTexto) return `${item.horaInicioTexto} - ${item.horaFinTexto}`; return ''; }
-    function getGroupNumber(point) { const m = String(point || '').match(/grupo\s*(\d+)/i); return m ? Number(m[1]) : null; }
-    function isGroupPoint(point) { return getGroupNumber(point) !== null; }
-    function normalizeGroupLabel(point) { const n = getGroupNumber(point); return n === null ? (point || '') : `GRUPO ${n}`; }
-    function comparePredShiftItems(a, b) {
-      const ga = getGroupNumber(a.puntoReunion), gb = getGroupNumber(b.puntoReunion);
-      if (ga !== null && gb !== null && ga !== gb) return ga - gb;
-      if (ga !== null && gb === null) return -1;
-      if (ga === null && gb !== null) return 1;
-      const ta = toMinutes(a.horaInicio || '') ?? 9999, tb = toMinutes(b.horaInicio || '') ?? 9999;
-      if (ta !== tb) return ta - tb;
-      return String(a.puntoReunion || '').localeCompare(String(b.puntoReunion || ''));
-    }
-    function preprocessPredication(raw) {
-      const items = Array.isArray(raw.items) ? raw.items : [];
-      return items.map((it, idx) => {
-        const start = toMinutes(it.horaInicio || '');
-        const shiftNorm = normText(it.turno || (start !== null && start < 720 ? 'Mañana' : 'Noche'));
-        return { id: it.id || `p${idx}`, dia: it.dia || '', diaNorm: normText(it.dia || ''), fechaISO: it.fechaISO || it.fecha || '', turno: it.turno || (shiftNorm.includes('noche') ? 'Noche' : 'Mañana'), turnoNorm: shiftNorm.includes('noche') ? 'noche' : 'mañana', horaInicio: it.horaInicio || '', horaFin: it.horaFin || '', horaInicioTexto: it.horaInicioTexto || '', horaFinTexto: it.horaFinTexto || '', horaTexto: it.horaTexto || '', puntoReunion: it.puntoReunion || it.punto || '', conductor: it.conductor || '', territorio: it.territorio || '', notas: it.notas || '' };
-      }).sort((a,b) => (a.fechaISO || '').localeCompare(b.fechaISO || '') || comparePredShiftItems(a,b));
-    }
-    function isMeetingBlock(it) { return normText(it.puntoReunion || '').includes('vida y ministerio'); }
-    function getPredChip(turnoNorm) { return `<span class="pred-chip ${turnoNorm === 'noche' ? 'noche' : 'manana'}">${turnoNorm === 'noche' ? 'Noche' : 'Mañana'}</span>`; }
-    function getHeadline(items) {
-      if (!items.length) return null; const now = new Date(), todayISO = now.toISOString().slice(0,10), mins = now.getHours()*60 + now.getMinutes();
-      const active = items.find(it => it.fechaISO === todayISO && it.horaInicio && it.horaFin && mins >= toMinutes(it.horaInicio) && mins < toMinutes(it.horaFin));
-      if (active) return { mode:'activo', item:active };
-      const upcomingToday = items.find(it => it.fechaISO === todayISO && it.horaInicio && mins < toMinutes(it.horaInicio));
-      if (upcomingToday) return { mode:'proximo', item:upcomingToday };
-      const future = items.find(it => (it.fechaISO || '') > todayISO || ((it.fechaISO || '') === todayISO && it.horaInicio && mins < toMinutes(it.horaInicio)));
-      return { mode:'proximo', item: future || items[0] };
-    }
-    function renderPredEntry(it) {
-      const meeting = isMeetingBlock(it), group = isGroupPoint(it.puntoReunion || '');
-      if (group) return `<div class="pred-entry"><div class="pred-shift-point">${esc(normalizeGroupLabel(it.puntoReunion || ''))}</div>${it.territorio ? `<div class="pred-shift-territory">${esc(it.territorio)}</div>` : ''}${it.notas ? `<span class="pred-shift-note">${esc(it.notas)}</span>` : ''}</div>`;
-      return `<div class="pred-entry"><div class="pred-shift-point">${esc(it.puntoReunion || '')}</div>${!meeting && it.conductor ? `<div class="pred-shift-conductor">${esc(it.conductor)}</div>` : ''}${!meeting && it.territorio ? `<div class="pred-shift-territory">Territorio: ${esc(it.territorio)}</div>` : ''}${!meeting && it.notas ? `<span class="pred-shift-note">${esc(it.notas)}</span>` : ''}</div>`;
-    }
-    function renderPredShiftList(items, shiftNorm) {
-      if (!items || !items.length) return '<div class="pred-empty">Sin turno</div>';
-      const sorted = items.slice().sort(comparePredShiftItems), first = sorted[0];
-      return `<div class="pred-shift-top">${getPredChip(shiftNorm)}<div class="pred-shift-time">${esc(formatTimeRange(first))}</div></div><div class="pred-shift-group">${sorted.map(renderPredEntry).join('')}</div>`;
-    }
-    function renderPreaching(d) {
-      const items = preprocessPredication(d || { hasData:false, items:[] }), weekLabel = d && d.semanaTexto ? d.semanaTexto : '', headline = getHeadline(items);
-      const top = headline ? (() => { const it = headline.item, meeting = isMeetingBlock(it), group = isGroupPoint(it.puntoReunion || ''); return `<div class="pred-next"><div class="pred-next-label">${headline.mode === 'activo' ? 'Turno actual' : 'Próxima predicación'}</div><div class="pred-next-head"><div><div class="pred-dayline">${esc(it.dia || '')}</div><div class="pred-hours">${esc(formatTimeRange(it))}</div></div>${getPredChip(it.turnoNorm)}</div><div class="pred-next-body"><div class="pred-point-big">${esc(group ? normalizeGroupLabel(it.puntoReunion || '') : (it.puntoReunion || 'Sin definir'))}</div>${group ? (it.territorio ? `<div class="pred-territory-line">${esc(it.territorio)}</div>` : '') : (!meeting && it.conductor ? `<div class="pred-conductor">${esc(it.conductor)}</div>` : '')}${!group && !meeting && it.territorio ? `<div class="pred-territory-line">Territorio: ${esc(it.territorio)}</div>` : ''}${!meeting && it.notas ? `<span class="pred-shift-note">${esc(it.notas)}</span>` : ''}</div></div>`; })() : `<div class="pred-next"><div class="pred-next-label">Próxima predicación</div><div class="empty-state">No hay turnos cargados todavía.</div></div>`;
-      const grouped = Object.fromEntries(DAY_ORDER.map(day => [day, { manana:[], noche:[] }]));
-      items.forEach(it => { if (!grouped[it.diaNorm]) return; if (it.turnoNorm === 'mañana') grouped[it.diaNorm].manana.push(it); if (it.turnoNorm === 'noche') grouped[it.diaNorm].noche.push(it); });
-      const daysHtml = DAY_ORDER.map(day => { const g = grouped[day]; return `<div class="pred-day-card"><div class="pred-day-head"><div class="pred-day-name">${DAY_LABEL[day]}</div></div><div class="pred-day-grid"><div class="pred-shift-col">${renderPredShiftList(g.manana, 'mañana')}</div><div class="pred-shift-col">${renderPredShiftList(g.noche, 'noche')}</div></div></div>`; }).join('');
-      return `<div class="pred-wrap">${top}<div class="pred-program"><div class="pred-program-head"><div><div class="pred-program-title">Programa completo de predicación</div>${weekLabel ? `<div class="pred-week-label">${esc(weekLabel)}</div>` : ''}</div></div><div class="pred-days">${daysHtml || '<div class="empty-state">No hay turnos de predicación cargados todavía.</div>'}</div></div></div>`;
-    }
-
-    function renderTerritorio() {
-      return `<div class="map-wrap"><div class="map-toolbar"><div class="map-actions"><button class="map-btn" id="map-zoom-out" type="button">−</button><button class="map-btn" id="map-zoom-in" type="button">+</button><button class="map-btn" id="map-fit" type="button">Ajustar</button><button class="map-btn" id="map-reset" type="button">100%</button></div></div><div class="map-viewport" id="map-viewport"><div class="map-inline-host" id="map-inline-host"></div><div class="map-hud" id="map-hud">Rápido</div></div><div class="map-status" id="map-status">Cargando mapa SVG…</div></div>`;
-    }
-
-    async function mountSvgViewer() {
-      const viewport = document.getElementById('map-viewport');
-      const host = document.getElementById('map-inline-host');
-      const status = document.getElementById('map-status');
-      if (!viewport || !host || !status) return;
-
-      let text = '';
-      try {
-        const res = await fetch(TERRITORY_SVG, { cache: 'no-store' });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        text = await res.text();
-      } catch (err) {
-        status.textContent = 'No se pudo cargar mapa-territorio.svg. Súbelo junto al index.html en la misma carpeta.';
-        return;
-      }
-
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(text, 'image/svg+xml');
-      const svg = doc.documentElement;
-      if (!svg || svg.nodeName.toLowerCase() !== 'svg') { status.textContent = 'El archivo mapa-territorio.svg no parece ser un SVG válido.'; return; }
-
-      host.innerHTML = '<div class="map-render-layer" id="map-render-layer"></div>';
-      const layer = document.getElementById('map-render-layer');
-      layer.appendChild(svg);
-      svg.setAttribute('width', '100%');
-      svg.setAttribute('height', '100%');
-      svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
-      svg.style.display = 'block';
-      svg.style.touchAction = 'none';
-
-      let orig = null;
-      const vbAttr = svg.getAttribute('viewBox');
-      if (vbAttr) {
-        const vals = vbAttr.trim().split(/[ ,]+/).map(Number);
-        if (vals.length === 4 && vals.every(v => !Number.isNaN(v))) orig = { x: vals[0], y: vals[1], w: vals[2], h: vals[3] };
-      }
-      if (!orig) {
-        const w = parseFloat(svg.getAttribute('width')) || svg.viewBox.baseVal.width || 1000;
-        const h = parseFloat(svg.getAttribute('height')) || svg.viewBox.baseVal.height || 1000;
-        orig = { x: 0, y: 0, w, h };
-        svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
-      }
-
-      const state = {
-        orig,
-        current: { ...orig },
-        minScale: 1,
-        maxScale: 30,
-        pointers: new Map(),
-        interaction: null,
-        rafId: 0,
-        preview: null
-      };
-
-      function renderedMetrics(rect = state.current) {
-        const vw = viewport.clientWidth, vh = viewport.clientHeight;
-        const scale = Math.min(vw / rect.w, vh / rect.h);
-        const rw = rect.w * scale, rh = rect.h * scale;
-        const ox = (vw - rw) / 2, oy = (vh - rh) / 2;
-        return { vw, vh, scale, rw, rh, ox, oy };
-      }
-      function pointToSvg(clientX, clientY, rect = state.current) {
-        const vr = viewport.getBoundingClientRect();
-        const localX = clientX - vr.left, localY = clientY - vr.top;
-        const m = renderedMetrics(rect);
-        return { x: rect.x + (localX - m.ox) / m.scale, y: rect.y + (localY - m.oy) / m.scale };
-      }
-      function clampRect(rect) {
-        const o = state.orig;
-        if (rect.w <= o.w) rect.x = Math.max(o.x, Math.min(o.x + o.w - rect.w, rect.x));
-        else rect.x = o.x - (rect.w - o.w) / 2;
-        if (rect.h <= o.h) rect.y = Math.max(o.y, Math.min(o.y + o.h - rect.h, rect.y));
-        else rect.y = o.y - (rect.h - o.h) / 2;
-        return rect;
-      }
-      function updateStatus() {
-        const zoomPct = Math.round((state.orig.w / state.current.w) * 100);
-        status.textContent = `Zoom: ${zoomPct}%`;
-      }
-      function applyViewBox() {
-        clampRect(state.current);
-        svg.setAttribute('viewBox', `${state.current.x} ${state.current.y} ${state.current.w} ${state.current.h}`);
-        layer.style.transform = 'translate3d(0,0,0) scale(1)';
-        layer.style.transformOrigin = '0 0';
-        updateStatus();
-      }
-      function fitAll() { state.current = { ...state.orig }; applyViewBox(); }
-      function centerSvgPoint() { return { x: state.current.x + state.current.w / 2, y: state.current.y + state.current.h / 2 }; }
-      function zoomAt(factor, svgX, svgY) {
-        const targetW = Math.max(state.orig.w / state.maxScale, Math.min(state.orig.w / state.minScale, state.current.w / factor));
-        const targetH = state.current.h * (targetW / state.current.w);
-        const relX = (svgX - state.current.x) / state.current.w;
-        const relY = (svgY - state.current.y) / state.current.h;
-        state.current.x = svgX - relX * targetW;
-        state.current.y = svgY - relY * targetH;
-        state.current.w = targetW; state.current.h = targetH;
-        applyViewBox();
-      }
-
-      function schedulePreview() {
-        if (state.rafId) return;
-        state.rafId = requestAnimationFrame(() => {
-          state.rafId = 0;
-          renderPreview();
-        });
-      }
-      function renderPreview() {
-        if (!state.interaction) return;
-        if (state.interaction.type === 'pan') {
-          const rect = viewport.getBoundingClientRect();
-          const p = state.pointers.get(state.interaction.pointerId);
-          if (!p) return;
-          const dx = p.x - state.interaction.startClient.x;
-          const dy = p.y - state.interaction.startClient.y;
-          state.preview = { type:'pan', dx, dy };
-          layer.style.transformOrigin = '0 0';
-          layer.style.transform = `translate3d(${dx}px, ${dy}px, 0) scale(1)`;
-        } else if (state.interaction.type === 'pinch') {
-          if (state.pointers.size < 2) return;
-          const vals = Array.from(state.pointers.values());
-          const dx = vals[0].x - vals[1].x, dy = vals[0].y - vals[1].y;
-          const dist = Math.hypot(dx, dy);
-          if (!state.interaction.startDistance) return;
-          const factor = dist / state.interaction.startDistance;
-          const currentCenter = { x: (vals[0].x + vals[1].x)/2, y: (vals[0].y + vals[1].y)/2 };
-          const startCenter = state.interaction.startCenter;
-          const tx = currentCenter.x - startCenter.x;
-          const ty = currentCenter.y - startCenter.y;
-          state.preview = { type:'pinch', factor, tx, ty, currentCenter };
-          layer.style.transformOrigin = `${startCenter.x}px ${startCenter.y}px`;
-          layer.style.transform = `translate3d(${tx}px, ${ty}px, 0) scale(${factor})`;
-        }
-      }
-      function commitPreview() {
-        if (!state.preview || !state.interaction) return;
-        const startRect = { ...state.interaction.baseRect };
-        if (state.preview.type === 'pan') {
-          const m = renderedMetrics(startRect);
-          const dxUnit = state.preview.dx / m.scale;
-          const dyUnit = state.preview.dy / m.scale;
-          state.current = { ...startRect, x: startRect.x - dxUnit, y: startRect.y - dyUnit };
-        } else if (state.preview.type === 'pinch') {
-          const factorRaw = state.preview.factor;
-          const targetW = Math.max(state.orig.w / state.maxScale, Math.min(state.orig.w / state.minScale, startRect.w / factorRaw));
-          const targetH = startRect.h * (targetW / startRect.w);
-          const anchorSvg = pointToSvg(state.interaction.startCenter.x + viewport.getBoundingClientRect().left, state.interaction.startCenter.y + viewport.getBoundingClientRect().top, startRect);
-          const localCenter = state.preview.currentCenter;
-          const vw = viewport.clientWidth, vh = viewport.clientHeight;
-          const scale = Math.min(vw / targetW, vh / targetH);
-          const rw = targetW * scale, rh = targetH * scale;
-          const ox = (vw - rw) / 2, oy = (vh - rh) / 2;
-          state.current = {
-            x: anchorSvg.x - (localCenter.x - ox) / scale,
-            y: anchorSvg.y - (localCenter.y - oy) / scale,
-            w: targetW,
-            h: targetH
-          };
-        }
-        state.preview = null;
-        applyViewBox();
-      }
-      function endInteraction() {
-        if (state.rafId) { cancelAnimationFrame(state.rafId); state.rafId = 0; }
-        commitPreview();
-        state.interaction = null;
-      }
-
-      viewport.addEventListener('wheel', (e) => {
-        e.preventDefault();
-        const p = pointToSvg(e.clientX, e.clientY);
-        zoomAt(e.deltaY < 0 ? 1.12 : 1/1.12, p.x, p.y);
-      }, { passive:false });
-      viewport.addEventListener('dblclick', (e) => {
-        const p = pointToSvg(e.clientX, e.clientY);
-        zoomAt(1.7, p.x, p.y);
-      });
-
-      viewport.addEventListener('pointerdown', (e) => {
-        viewport.setPointerCapture(e.pointerId);
-        const vr = viewport.getBoundingClientRect();
-        state.pointers.set(e.pointerId, { x: e.clientX - vr.left, y: e.clientY - vr.top });
-        if (state.pointers.size === 1) {
-          state.interaction = { type:'pan', pointerId:e.pointerId, startClient:{ x:e.clientX - vr.left, y:e.clientY - vr.top }, baseRect:{ ...state.current } };
-        } else if (state.pointers.size === 2) {
-          const vals = Array.from(state.pointers.values());
-          const dx = vals[0].x - vals[1].x, dy = vals[0].y - vals[1].y;
-          state.interaction = { type:'pinch', startDistance:Math.hypot(dx,dy), startCenter:{ x:(vals[0].x+vals[1].x)/2, y:(vals[0].y+vals[1].y)/2 }, baseRect:{ ...state.current } };
-        }
-      });
-
-      viewport.addEventListener('pointermove', (e) => {
-        if (!state.pointers.has(e.pointerId)) return;
-        const vr = viewport.getBoundingClientRect();
-        state.pointers.set(e.pointerId, { x: e.clientX - vr.left, y: e.clientY - vr.top });
-        if (state.pointers.size === 2 && state.interaction?.type !== 'pinch') {
-          const vals = Array.from(state.pointers.values());
-          const dx = vals[0].x - vals[1].x, dy = vals[0].y - vals[1].y;
-          state.interaction = { type:'pinch', startDistance:Math.hypot(dx,dy), startCenter:{ x:(vals[0].x+vals[1].x)/2, y:(vals[0].y+vals[1].y)/2 }, baseRect:{ ...state.current } };
-        }
-        schedulePreview();
-      });
-
-      function pointerEnd(e) {
-        state.pointers.delete(e.pointerId);
-        if (state.pointers.size === 0) {
-          endInteraction();
-        } else if (state.pointers.size === 1) {
-          endInteraction();
-          const [id, p] = Array.from(state.pointers.entries())[0];
-          state.interaction = { type:'pan', pointerId:id, startClient:{ ...p }, baseRect:{ ...state.current } };
-        } else if (state.pointers.size === 2) {
-          endInteraction();
-          const vals = Array.from(state.pointers.values());
-          const dx = vals[0].x - vals[1].x, dy = vals[0].y - vals[1].y;
-          state.interaction = { type:'pinch', startDistance:Math.hypot(dx,dy), startCenter:{ x:(vals[0].x+vals[1].x)/2, y:(vals[0].y+vals[1].y)/2 }, baseRect:{ ...state.current } };
-        }
-      }
-      viewport.addEventListener('pointerup', pointerEnd);
-      viewport.addEventListener('pointercancel', pointerEnd);
-      viewport.addEventListener('pointerleave', pointerEnd);
-
-      document.getElementById('map-zoom-in')?.addEventListener('click', () => { const c = centerSvgPoint(); zoomAt(1.25, c.x, c.y); });
-      document.getElementById('map-zoom-out')?.addEventListener('click', () => { const c = centerSvgPoint(); zoomAt(1/1.25, c.x, c.y); });
-      document.getElementById('map-fit')?.addEventListener('click', fitAll);
-      document.getElementById('map-reset')?.addEventListener('click', fitAll);
-      window.addEventListener('resize', applyViewBox);
-
-      fitAll();
-      status.textContent = 'Mapa listo';
     }
 
     loadData();
