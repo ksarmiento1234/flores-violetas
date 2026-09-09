@@ -183,6 +183,95 @@
     function showLoading(isLoading) { document.getElementById('loading').classList.toggle('hidden', !isLoading); Object.values(views).forEach(el => el.classList.toggle('hidden', isLoading)); }
     function showApiError(message, detail='') { showLoading(false); views.entresemana.innerHTML = `<div class="error-state"><strong>${esc(message)}</strong>${detail ? `<small>${esc(detail)}</small>` : ''}</div>`; views.findesemana.innerHTML = `<div class="error-state"><strong>${esc(message)}</strong>${detail ? `<small>${esc(detail)}</small>` : ''}</div>`; activate('entresemana'); }
 
+    /* ===== Detección de la semana actual ===== */
+    const DAY_MS = 86400000;
+    const MONTHS_ES = { enero:0, febrero:1, marzo:2, abril:3, mayo:4, junio:5, julio:6, agosto:7, septiembre:8, setiembre:8, octubre:9, noviembre:10, diciembre:11 };
+
+    // Perú (UTC-5, sin horario de verano). El ciclo cambia de semana el domingo a las 12:00 p. m.
+    const PERU_UTC_OFFSET_MIN = -300;
+    const ROLLOVER_WEEKDAY = 0; // 0 = domingo
+    const ROLLOVER_HOUR = 12;
+
+    // Hora de pared en Perú, sin importar el reloj/zona del dispositivo
+    function peruWallClock(now = new Date()) {
+      const shifted = new Date(now.getTime() + PERU_UTC_OFFSET_MIN * 60000);
+      return { year: shifted.getUTCFullYear(), month: shifted.getUTCMonth(), day: shifted.getUTCDate(), hour: shifted.getUTCHours(), weekday: shifted.getUTCDay() };
+    }
+
+    // Día de referencia: el domingo desde las 12:00 p. m. ya cuenta como la semana siguiente
+    function referenceDay(now = new Date()) {
+      const p = peruWallClock(now);
+      const ref = new Date(p.year, p.month, p.day);
+      if (p.weekday === ROLLOVER_WEEKDAY && p.hour >= ROLLOVER_HOUR) ref.setDate(ref.getDate() + 1);
+      return ref;
+    }
+
+    // Extrae una fecha desde weekKey: 2026-09-07, 2026/9/7, 07-09-2026, 7/9/2026
+    function parseDateFromKey(key) {
+      const s = String(key ?? '').trim();
+      let m = s.match(/(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
+      if (m) return new Date(+m[1], +m[2] - 1, +m[3]);
+      m = s.match(/(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})/);
+      if (m) return new Date(+m[3], +m[2] - 1, +m[1]);
+      return null;
+    }
+
+    // Extrae la fecha de inicio desde el título: "7-13 de septiembre", "30 de marzo a 5 de abril de 2026"
+    function parseWeekStartFromTitle(title, fallbackYear) {
+      const raw = normText(title);
+      if (!raw) return null;
+      const yearMatch = raw.match(/(20\d{2})/);
+      const year = yearMatch ? +yearMatch[1] : fallbackYear;
+      const cleaned = raw.replace(/\b20\d{2}\b/g, ' ');
+      const dayMatch = cleaned.match(/\d{1,2}/);
+      if (!dayMatch) return null;
+      let monthIndex = -1, bestPos = Infinity;
+      for (const name in MONTHS_ES) {
+        const pos = cleaned.indexOf(name);
+        if (pos >= 0 && pos < bestPos) { bestPos = pos; monthIndex = MONTHS_ES[name]; }
+      }
+      if (monthIndex < 0) return null;
+      return new Date(year, monthIndex, +dayMatch[0]);
+    }
+
+    // Fecha de inicio de cada semana, corrigiendo saltos de año cuando el título no lo trae
+    function computeWeekStarts(weeks) {
+      const fallbackYear = referenceDay().getFullYear();
+      const starts = weeks.map(w => parseDateFromKey(w && w.weekKey) || parseWeekStartFromTitle((w && (w.weekTitle || w.headerTitle)) || '', fallbackYear));
+      let previous = null;
+      for (const date of starts) {
+        if (!date) continue;
+        if (previous && date - previous < -150 * DAY_MS) date.setFullYear(date.getFullYear() + 1);
+        previous = date;
+      }
+      return starts;
+    }
+
+    // Prioridad: semana que contiene hoy > weekKey del API > próxima semana > última pasada
+    function resolveWeekIndex(weeks, currentWeekKey) {
+      if (!Array.isArray(weeks) || !weeks.length) return 0;
+      const today = referenceDay();
+      const starts = computeWeekStarts(weeks);
+
+      for (let i = 0; i < starts.length; i++) {
+        const start = starts[i];
+        if (start && today >= start && today < new Date(start.getTime() + 7 * DAY_MS)) return i;
+      }
+
+      if (currentWeekKey != null && String(currentWeekKey).trim() !== '') {
+        let i = weeks.findIndex(w => String(w && w.weekKey) === String(currentWeekKey));
+        if (i >= 0) return i;
+        const key = normText(currentWeekKey);
+        i = weeks.findIndex(w => normText(w && w.weekKey) === key);
+        if (i >= 0) return i;
+      }
+
+      for (let i = 0; i < starts.length; i++) { if (starts[i] && starts[i] > today) return i; }
+      for (let i = starts.length - 1; i >= 0; i--) { if (starts[i]) return i; }
+      return 0;
+    }
+    /* ===== fin detección ===== */
+
     function loadData() {
       if (!API_URL) { showApiError('Falta configurar la URL del API.'); return; }
       showLoading(true);
@@ -217,7 +306,7 @@
 
     function initMidweek(data) {
       if (!data || !data.hasData || !Array.isArray(data.weeks) || !data.weeks.length) { views.entresemana.innerHTML = '<div class="empty-state">No hay datos cargados para <strong>Vida y Ministerio</strong>.</div>'; return; }
-      midweekWeeks = data.weeks.slice(); let idx = midweekWeeks.findIndex(w => w.weekKey === data.currentWeekKey); if (idx < 0) idx = 0; midweekIndex = idx; paintCurrentMidweekWeek();
+      midweekWeeks = data.weeks.slice(); midweekIndex = resolveWeekIndex(midweekWeeks, data.currentWeekKey); paintCurrentMidweekWeek();
     }
     function paintCurrentMidweekWeek() {
       const d = midweekWeeks[midweekIndex]; if (!d) return;
@@ -237,7 +326,7 @@
 
     function initWeekend(data) {
       if (!data || !data.hasData || !Array.isArray(data.weeks) || !data.weeks.length) { views.findesemana.innerHTML = '<div class="empty-state">No hay datos cargados para <strong>Conferencia y Atalaya</strong>.</div>'; return; }
-      weekendWeeks = data.weeks.slice(); let idx = weekendWeeks.findIndex(w => w.weekKey === data.currentWeekKey); if (idx < 0) idx = 0; weekendIndex = idx; paintCurrentWeekendWeek();
+      weekendWeeks = data.weeks.slice(); weekendIndex = resolveWeekIndex(weekendWeeks, data.currentWeekKey); paintCurrentWeekendWeek();
     }
     function supportLine(label, value) { return value ? `<div>${label}:<span>${esc(value)}</span></div>` : ''; }
     function paintCurrentWeekendWeek() {
