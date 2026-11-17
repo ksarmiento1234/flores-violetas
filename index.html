@@ -152,6 +152,12 @@
     .login-error { color:var(--red); font-size:.9rem; text-align:center; min-height:1.1em; }
     .toast { position:fixed; left:50%; bottom:96px; transform:translateX(-50%); z-index:70; background:#0b6e63; color:#fff; padding:10px 18px; border-radius:999px; font-weight:800; box-shadow:0 4px 14px rgba(0,0,0,.2); max-width:calc(100% - 32px); text-align:center; }
     .toast.error { background:var(--red); }
+    .draft-chip { display:inline-block; vertical-align:middle; margin-left:8px; background:var(--daychip); color:#2b2400; font-size:11px; font-weight:900; letter-spacing:.06em; padding:4px 9px; border-radius:999px; }
+    .draft-banner { display:flex; align-items:center; gap:12px; flex-wrap:wrap; background:#fff4c2; border-bottom:2px solid #e0b11a; color:#4a3b00; padding:12px 18px; }
+    .draft-text { flex:1 1 240px; font-size:.92rem; line-height:1.35; }
+    .draft-text strong { display:block; font-size:1rem; margin-bottom:2px; }
+    .btn-make-visible { border:none; background:var(--green); color:#fff; font-weight:900; letter-spacing:.04em; padding:10px 16px; border-radius:999px; cursor:pointer; white-space:nowrap; }
+    .btn-make-visible:disabled { opacity:.5; cursor:wait; }
 
     @media (max-width:760px) {
       .pred-day-grid { grid-template-columns:1fr; }
@@ -347,6 +353,19 @@
       if (!API_URL) { showApiError('Falta configurar la URL del API.'); return; }
       const keepScroll = window.scrollY;
       showLoading(true);
+      if (ADMIN) {
+        // En modo edición los datos se piden con contraseña para incluir las semanas en borrador
+        apiPost({ action: 'data', password: adminPassword })
+          .then(data => {
+            if (data && data.auth === false) { storePw(''); showLogin('La sesión expiró. Ingresa de nuevo.'); return; }
+            if (!data || data.ok !== true) { showApiError('El API respondió con datos inválidos.', JSON.stringify(data || {})); return; }
+            renderAll(data); showLoading(false);
+            activate(currentTab, !afterSave);
+            if (afterSave) window.scrollTo(0, keepScroll);
+          })
+          .catch(() => showApiError('Error al cargar los datos.', 'Verifica que el Apps Script esté actualizado (nueva versión implementada).'));
+        return;
+      }
       const callbackName = '__rolesPrefix_' + Date.now();
       const separator = API_URL.includes('?') ? '&' : '?';
       const src = `${API_URL}${separator}prefix=${callbackName}&_ts=${Date.now()}`;
@@ -357,13 +376,8 @@
         cleanup();
         if (!data || data.ok !== true) { showApiError('El API respondió con datos inválidos.', JSON.stringify(data || {})); return; }
         renderAll(data); showLoading(false);
-        if (ADMIN) {
-          activate(currentTab, !afterSave);
-          if (afterSave) window.scrollTo(0, keepScroll);
-        } else {
-          const requested = (location.hash || '').replace('#','').trim().toLowerCase();
-          activate(requested || 'entresemana');
-        }
+        const requested = (location.hash || '').replace('#','').trim().toLowerCase();
+        activate(requested || 'entresemana');
       };
       script.onerror = function() { cleanup(); showApiError('Error al cargar el API.','La URL respondió con error.'); };
       document.body.appendChild(script);
@@ -415,6 +429,17 @@
     function renderAssemblyBlock(name, theme) {
       return `<div class="assembly-wrap"><div class="assembly-badge">NO HAY REUNIÓN — ASAMBLEA</div>${name ? `<div class="assembly-name">${esc(name)}</div>` : ''}${theme ? `<div class="assembly-theme">“${esc(theme)}”</div>` : ''}</div>`;
     }
+    /* ===== Semanas en borrador (solo llegan en modo edición) ===== */
+    function draftChip(d) { return ADMIN && d && d.isDraft ? `<span class="draft-chip">BORRADOR</span>` : ''; }
+    function draftBanner(d, meeting) {
+      if (!ADMIN || !d || !d.isDraft) return '';
+      return `<div class="draft-banner"><div class="draft-text"><strong>📝 Semana en borrador</strong><span>Solo la ven quienes editan. Llénala y guárdala las veces que quieras; cuando esté lista, publícala para que todos la vean.</span></div><button type="button" class="btn-make-visible" data-meeting="${meeting}" data-week="${esc(d.weekKey)}">PUBLICAR SEMANA</button></div>`;
+    }
+    function isDraftWeek(meeting, weekKey) {
+      const list = meeting === 'entresemana' ? midweekWeeks : weekendWeeks;
+      const w = list.find(x => String(x.weekKey) === String(weekKey));
+      return !!(w && w.isDraft);
+    }
     function indexForKey(weeks, key) { return key ? weeks.findIndex(w => String(w.weekKey) === String(key)) : -1; }
 
     /* ===== Vida y Ministerio ===== */
@@ -429,7 +454,8 @@
       const d = midweekWeeks[midweekIndex]; if (!d) return;
       const R = d.refs || {};
       const M = 'entresemana';
-      const navHtml = `<div class="head"><div class="head-nav"><button class="nav-arrow" id="mw-prev" ${midweekIndex === 0 ? 'disabled' : ''}>◀</button><div class="head-title">${esc(d.weekTitle || '')}</div><button class="nav-arrow" id="mw-next" ${midweekIndex === midweekWeeks.length - 1 ? 'disabled' : ''}>▶</button></div></div>`;
+      let navHtml = `<div class="head"><div class="head-nav"><button class="nav-arrow" id="mw-prev" ${midweekIndex === 0 ? 'disabled' : ''}>◀</button><div class="head-title">${esc(d.weekTitle || '')}${draftChip(d)}</div><button class="nav-arrow" id="mw-next" ${midweekIndex === midweekWeeks.length - 1 ? 'disabled' : ''}>▶</button></div></div>`;
+      navHtml += draftBanner(d, M);
       const looksLikeAssembly = normText(d.president || '').includes('asamblea');
       if (d.isAssembly || looksLikeAssembly) {
         const name = d.assemblyName || d.president || '';
@@ -459,7 +485,8 @@
     function supportLineAdmin(d, label, row) { return row ? `<div>${label}:${edPair(d, 'findesemana', row)}</div>` : ''; }
     function paintCurrentWeekendWeek() {
       const d = weekendWeeks[weekendIndex]; if (!d) return;
-      const navHtml = `<div class="wk-date"><div class="wk-date-nav"><button class="nav-arrow" id="wk-prev" ${weekendIndex === 0 ? 'disabled' : ''}>◀</button><div class="wk-date-title">${esc(d.headerTitle || '')}</div><button class="nav-arrow" id="wk-next" ${weekendIndex === weekendWeeks.length - 1 ? 'disabled' : ''}>▶</button></div></div>`;
+      let navHtml = `<div class="wk-date"><div class="wk-date-nav"><button class="nav-arrow" id="wk-prev" ${weekendIndex === 0 ? 'disabled' : ''}>◀</button><div class="wk-date-title">${esc(d.headerTitle || '')}${draftChip(d)}</div><button class="nav-arrow" id="wk-next" ${weekendIndex === weekendWeeks.length - 1 ? 'disabled' : ''}>▶</button></div></div>`;
+      navHtml += draftBanner(d, 'findesemana');
       const looksLikeAssembly = normText(d.president || '').includes('asamblea');
       if (d.isAssembly || looksLikeAssembly) {
         const name = d.assemblyName || d.president || '';
@@ -516,9 +543,16 @@
       if (!ADMIN) return;
       const n = Object.keys(edits).length;
       const meetings = new Set(Object.values(edits).map(e => e.meeting));
-      const where = [meetings.has('entresemana') ? 'Vida y Ministerio' : '', meetings.has('findesemana') ? 'Conferencia y Atalaya' : ''].filter(Boolean).join(' y ');
-      document.getElementById('admin-count').innerHTML = n ? `${n} cambio${n === 1 ? '' : 's'} sin publicar<small>${esc(where)}</small>` : 'Sin cambios<small>Toca un nombre para editarlo</small>';
-      document.getElementById('btn-publish').disabled = !n;
+      let where = [meetings.has('entresemana') ? 'Vida y Ministerio' : '', meetings.has('findesemana') ? 'Conferencia y Atalaya' : ''].filter(Boolean).join(' y ');
+      // Si todos los cambios son de semanas en borrador, se guardan sin hacerse visibles
+      const allDraft = n > 0 && Object.values(edits).every(e => isDraftWeek(e.meeting, e.weekKey));
+      const someDraft = Object.values(edits).some(e => isDraftWeek(e.meeting, e.weekKey));
+      if (allDraft) where += ' · borrador: se guarda sin hacerse visible';
+      else if (someDraft) where += ' · los cambios en borradores siguen ocultos';
+      document.getElementById('admin-count').innerHTML = n ? `${n} cambio${n === 1 ? '' : 's'} sin ${allDraft ? 'guardar' : 'publicar'}<small>${esc(where)}</small>` : 'Sin cambios<small>Toca un nombre para editarlo</small>';
+      const pubBtn = document.getElementById('btn-publish');
+      if (!pubBtn.dataset.busy) pubBtn.textContent = allDraft ? 'GUARDAR BORRADOR' : 'PUBLICAR';
+      pubBtn.disabled = !n;
       document.getElementById('btn-discard').disabled = !n;
     }
     function toast(msg, isError = false) {
@@ -605,34 +639,61 @@
         edits = {}; paintCurrentMidweekWeek(); paintCurrentWeekendWeek(); updateAdminBar();
       });
 
-      document.getElementById('btn-publish').addEventListener('click', async () => {
-        const changes = Object.values(edits);
-        if (!changes.length) return;
+      // Envía cambios (y opcionalmente semanas en borrador que pasan a visibles). Devuelve true si salió bien.
+      async function saveToSheet(keys, publishWeeks, successMsg) {
         const btn = document.getElementById('btn-publish');
-        btn.disabled = true; btn.textContent = 'Publicando…';
+        btn.disabled = true; btn.dataset.busy = '1'; btn.textContent = 'Guardando…';
         document.getElementById('btn-discard').disabled = true;
+        let ok = false;
         try {
-          const r = await apiPost({ action: 'save', password: adminPassword, changes });
+          const changes = keys.map(k => edits[k]);
+          const r = await apiPost({ action: 'save', password: adminPassword, changes, publishWeeks });
           if (r && r.ok) {
-            edits = {};
+            keys.forEach(k => delete edits[k]);
             preferKeys = {
               entresemana: midweekWeeks[midweekIndex] && midweekWeeks[midweekIndex].weekKey,
               findesemana: weekendWeeks[weekendIndex] && weekendWeeks[weekendIndex].weekKey
             };
-            toast(`✓ Publicado (${r.updated} cambio${r.updated === 1 ? '' : 's'})`);
+            toast(successMsg(r));
+            ok = true;
             loadData(true);
           } else if (r && r.auth === false) {
             storePw(''); adminPassword = '';
             toast('La contraseña ya no es válida. Ingresa de nuevo.', true);
             showLogin();
           } else {
-            toast((r && r.error) || 'No se pudo publicar.', true);
+            toast((r && r.error) || 'No se pudo guardar.', true);
           }
         } catch (e) {
           toast('Error de conexión. Tus cambios siguen aquí; intenta de nuevo.', true);
         }
-        btn.textContent = 'PUBLICAR';
+        delete btn.dataset.busy;
         updateAdminBar();
+        return ok;
+      }
+
+      document.getElementById('btn-publish').addEventListener('click', () => {
+        const keys = Object.keys(edits);
+        if (!keys.length) return;
+        const allDraft = keys.every(k => isDraftWeek(edits[k].meeting, edits[k].weekKey));
+        saveToSheet(keys, [], r => allDraft
+          ? `✓ Borrador guardado (${r.updated} cambio${r.updated === 1 ? '' : 's'}) — aún no es visible`
+          : `✓ Publicado (${r.updated} cambio${r.updated === 1 ? '' : 's'})`);
+      });
+
+      // "PUBLICAR SEMANA" en una semana en borrador: guarda sus cambios pendientes y la hace visible para todos
+      document.addEventListener('click', async ev => {
+        const b = ev.target.closest && ev.target.closest('.btn-make-visible');
+        if (!b) return;
+        const meeting = b.dataset.meeting, weekKey = b.dataset.week;
+        const list = meeting === 'entresemana' ? midweekWeeks : weekendWeeks;
+        const w = list.find(x => String(x.weekKey) === String(weekKey)) || {};
+        const title = w.weekTitle || w.headerTitle || 'esta semana';
+        const label = meeting === 'entresemana' ? 'Vida y Ministerio' : 'Conferencia y Atalaya';
+        if (!confirm(`¿Publicar "${title}" (${label})?\n\nDesde ese momento todos la podrán ver en la página.`)) return;
+        b.disabled = true; b.textContent = 'Publicando…';
+        const ok = await saveToSheet(pendingFor(meeting, weekKey), [{ meeting, weekKey }], () => `✓ "${title}" ya es visible para todos`);
+        if (!ok) { b.disabled = false; b.textContent = 'PUBLICAR SEMANA'; }
       });
 
       document.getElementById('admin-exit').addEventListener('click', () => {
