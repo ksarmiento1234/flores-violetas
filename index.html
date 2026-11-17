@@ -117,6 +117,42 @@
     .map-hud { position:absolute; right:12px; bottom:12px; background:rgba(255,255,255,.92); border:1px solid #d7dfdc; color:#33444a; border-radius:999px; padding:6px 10px; font-size:12px; font-weight:700; pointer-events:none; }
     .map-status { padding:8px 12px 12px; color:#516166; font-size:13px; }
 
+    /* ===== MODO EDICIÓN (#admin) ===== */
+    body.is-admin { padding-bottom:96px; }
+    .admin-top { display:flex; align-items:center; justify-content:space-between; gap:10px; background:var(--night); color:#fff; padding:10px 14px; border-radius:14px; margin:0 0 10px; font-weight:800; font-size:14px; letter-spacing:.03em; }
+    .admin-top button { border:1px solid rgba(255,255,255,.4); background:transparent; color:#fff; padding:6px 12px; border-radius:999px; font-weight:700; cursor:pointer; }
+    .ed { font:inherit; color:inherit; background:rgba(255,255,255,.75); border:1px dashed #8fb2ac; border-radius:8px; padding:2px 6px; margin:1px 0; width:min(100%,14em); min-width:0; vertical-align:baseline; }
+    .ed::placeholder { color:#9aa8a6; font-weight:400; }
+    .ed:hover { background:#fff; border-color:var(--green); }
+    .ed:focus { outline:2px solid var(--green); outline-offset:1px; background:#fff; border-style:solid; }
+    .ed.changed { background:#fff4c2; border:1px solid #d9a400; }
+    .ed-block { display:block; width:100%; text-align:center; }
+    .ed-multi { resize:none; overflow:hidden; line-height:1.12; font-weight:800; display:block; }
+    .ed-song { width:3.4em; text-align:center; font-weight:800; }
+    .ed-cleaning { width:5.5em; text-align:center; }
+    .ed-pair { display:inline-flex; flex-wrap:wrap; align-items:center; gap:4px 6px; max-width:100%; }
+    .ed-pair .ed { flex:1 1 9em; width:auto; }
+    .item-person.ed-pair { display:flex; }
+    .ed-sep { font-weight:700; color:#6b7a78; }
+    .wk-support .ed-pair { margin-left:6px; font-weight:400; color:#163d3a; }
+    .admin-bar { position:fixed; left:0; right:0; bottom:0; z-index:50; background:var(--night); color:#fff; box-shadow:0 -4px 16px rgba(0,0,0,.18); }
+    .admin-bar-inner { max-width:980px; margin:0 auto; display:flex; align-items:center; gap:10px; padding:12px 14px calc(12px + env(safe-area-inset-bottom)); }
+    .admin-count { flex:1; font-weight:700; font-size:14px; }
+    .admin-count small { display:block; font-weight:400; opacity:.75; font-size:12px; margin-top:2px; }
+    .btn-discard { border:1px solid rgba(255,255,255,.4); background:transparent; color:#fff; padding:11px 14px; border-radius:999px; font-weight:700; cursor:pointer; }
+    .btn-publish { border:none; background:var(--daychip); color:#2b2400; padding:12px 22px; border-radius:999px; font-weight:900; font-size:15px; letter-spacing:.04em; cursor:pointer; }
+    .btn-publish:disabled, .btn-discard:disabled { opacity:.4; cursor:not-allowed; }
+    .admin-login { position:fixed; inset:0; z-index:60; background:var(--bg); display:flex; align-items:center; justify-content:center; padding:16px; }
+    .login-card { background:#fff; border:1px solid var(--border); border-radius:20px; padding:26px 22px; width:100%; max-width:360px; box-shadow:0 6px 24px rgba(0,0,0,.08); display:grid; gap:12px; }
+    .login-title { font-size:1.25rem; font-weight:900; color:var(--green); text-align:center; }
+    .login-sub { font-size:.9rem; color:var(--muted); text-align:center; margin-top:-6px; }
+    .login-card input { font:inherit; font-size:16px; padding:12px 14px; border:1px solid #c9d4d1; border-radius:12px; }
+    .login-card button { border:none; background:var(--green); color:#fff; font-weight:800; font-size:16px; padding:12px; border-radius:12px; cursor:pointer; }
+    .login-card button:disabled { opacity:.6; }
+    .login-error { color:var(--red); font-size:.9rem; text-align:center; min-height:1.1em; }
+    .toast { position:fixed; left:50%; bottom:96px; transform:translateX(-50%); z-index:70; background:#0b6e63; color:#fff; padding:10px 18px; border-radius:999px; font-weight:800; box-shadow:0 4px 14px rgba(0,0,0,.2); max-width:calc(100% - 32px); text-align:center; }
+    .toast.error { background:var(--red); }
+
     @media (max-width:760px) {
       .pred-day-grid { grid-template-columns:1fr; }
       .pred-shift-col + .pred-shift-col { border-left:none; border-top:1px solid #e6ecea; }
@@ -153,7 +189,24 @@
   </style>
 </head>
 <body>
+  <div class="admin-login hidden" id="admin-login">
+    <form class="login-card" id="login-form" autocomplete="off">
+      <div class="login-title">Modo edición</div>
+      <div class="login-sub">Ingresa la contraseña para editar los roles</div>
+      <input type="password" id="login-pw" placeholder="Contraseña" autocomplete="current-password" />
+      <button type="submit" id="login-btn">Ingresar</button>
+      <div class="login-error" id="login-error"></div>
+    </form>
+  </div>
+  <div class="admin-bar hidden" id="admin-bar">
+    <div class="admin-bar-inner">
+      <div class="admin-count" id="admin-count">Sin cambios</div>
+      <button class="btn-discard" id="btn-discard" type="button" disabled>Descartar</button>
+      <button class="btn-publish" id="btn-publish" type="button" disabled>PUBLICAR</button>
+    </div>
+  </div>
   <div class="app">
+    <div class="admin-top hidden" id="admin-top"><span>✎ MODO EDICIÓN</span><button type="button" id="admin-exit">Salir</button></div>
     <div class="meeting-menu" role="tablist" aria-label="Tipo de reunión">
       <button class="meeting-tab wrap-two active" data-view="entresemana" type="button"><span class="topline">VIDA Y</span><span class="bottomline">MINISTERIO</span></button>
       <button class="meeting-tab wrap-two" data-view="findesemana" type="button"><span class="topline">CONFERENCIA</span><span class="bottomline">Y ATALAYA</span></button>
@@ -169,13 +222,19 @@
     const tabs = Array.from(document.querySelectorAll('.meeting-tab'));
     const views = { entresemana: document.getElementById('view-entresemana'), findesemana: document.getElementById('view-findesemana') };
     let midweekWeeks = [], midweekIndex = 0, weekendWeeks = [], weekendIndex = 0;
+    let currentTab = 'entresemana';
+    const ADMIN = (location.hash || '').toLowerCase() === '#admin';
+    let edits = {};                 // cambios pendientes: "fila|campo" -> { row, field, value, weekKey, meeting }
+    let preferKeys = null;          // semana a mantener abierta tras publicar
+    let adminPassword = '';
 
-    function activate(viewName) {
+    function activate(viewName, scroll = true) {
       const valid = views[viewName] ? viewName : 'entresemana';
+      currentTab = valid;
       tabs.forEach(tab => tab.classList.toggle('active', tab.dataset.view === valid));
       Object.keys(views).forEach(key => views[key].classList.toggle('active', key === valid));
-      if (location.hash !== '#' + valid) history.replaceState(null, '', '#' + valid);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      if (!ADMIN && location.hash !== '#' + valid) history.replaceState(null, '', '#' + valid);
+      if (scroll) window.scrollTo({ top: 0, behavior: 'smooth' });
     }
     tabs.forEach(tab => tab.addEventListener('click', () => activate(tab.dataset.view)));
     function esc(v) { return String(v ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\"/g,'&quot;').replace(/'/g,'&#039;'); }
@@ -206,13 +265,16 @@
       return ref;
     }
 
-    // Extrae una fecha desde weekKey: 2026-09-07, 2026/9/7, 07-09-2026, 7/9/2026
+    // Extrae una fecha desde weekKey: 2026-09-07, 2026/9/7, 07-09-2026, 7/9/2026, "Mon Nov 16 2026 ..."
+    const MONTHS_EN = { jan:0, feb:1, mar:2, apr:3, may:4, jun:5, jul:6, aug:7, sep:8, oct:9, nov:10, dec:11 };
     function parseDateFromKey(key) {
       const s = String(key ?? '').trim();
       let m = s.match(/(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
       if (m) return new Date(+m[1], +m[2] - 1, +m[3]);
       m = s.match(/(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})/);
       if (m) return new Date(+m[3], +m[2] - 1, +m[1]);
+      m = s.match(/\b([A-Za-z]{3})[a-z]* (\d{1,2}),? (\d{4})\b/);
+      if (m && MONTHS_EN[m[1].toLowerCase()] !== undefined) return new Date(+m[3], MONTHS_EN[m[1].toLowerCase()], +m[2]);
       return null;
     }
 
@@ -247,16 +309,26 @@
       return starts;
     }
 
-    // Prioridad: semana que contiene hoy > weekKey del API > próxima semana > última pasada
+    // Domingo con el que termina cada semana. Si la fecha detectada ya es domingo (p. ej. el título
+    // del fin de semana "15 de noviembre"), ese es el domingo; si es lunes (inicio de semana), se avanza al domingo.
+    function weekSunday(date) {
+      if (!date) return null;
+      return new Date(date.getFullYear(), date.getMonth(), date.getDate() + ((7 - date.getDay()) % 7));
+    }
+
+    // Se muestra la primera semana cuyo domingo todavía no pasó.
+    // El domingo desde las 12:00 p. m. (hora Perú) ya cuenta como lunes => se muestra la semana siguiente.
+    // Respaldo: weekKey del API > última semana con fecha.
     function resolveWeekIndex(weeks, currentWeekKey) {
       if (!Array.isArray(weeks) || !weeks.length) return 0;
-      const today = referenceDay();
-      const starts = computeWeekStarts(weeks);
+      const ref = referenceDay();
+      const sundays = computeWeekStarts(weeks).map(weekSunday);
 
-      for (let i = 0; i < starts.length; i++) {
-        const start = starts[i];
-        if (start && today >= start && today < new Date(start.getTime() + 7 * DAY_MS)) return i;
+      let best = -1;
+      for (let i = 0; i < sundays.length; i++) {
+        if (sundays[i] && sundays[i] >= ref && (best < 0 || sundays[i] < sundays[best])) best = i;
       }
+      if (best >= 0) return best;
 
       if (currentWeekKey != null && String(currentWeekKey).trim() !== '') {
         let i = weeks.findIndex(w => String(w && w.weekKey) === String(currentWeekKey));
@@ -266,14 +338,14 @@
         if (i >= 0) return i;
       }
 
-      for (let i = 0; i < starts.length; i++) { if (starts[i] && starts[i] > today) return i; }
-      for (let i = starts.length - 1; i >= 0; i--) { if (starts[i]) return i; }
+      for (let i = sundays.length - 1; i >= 0; i--) { if (sundays[i]) return i; }
       return 0;
     }
     /* ===== fin detección ===== */
 
-    function loadData() {
+    function loadData(afterSave = false) {
       if (!API_URL) { showApiError('Falta configurar la URL del API.'); return; }
+      const keepScroll = window.scrollY;
       showLoading(true);
       const callbackName = '__rolesPrefix_' + Date.now();
       const separator = API_URL.includes('?') ? '&' : '?';
@@ -285,8 +357,13 @@
         cleanup();
         if (!data || data.ok !== true) { showApiError('El API respondió con datos inválidos.', JSON.stringify(data || {})); return; }
         renderAll(data); showLoading(false);
-        const requested = (location.hash || '').replace('#','').trim().toLowerCase();
-        activate(requested || 'entresemana');
+        if (ADMIN) {
+          activate(currentTab, !afterSave);
+          if (afterSave) window.scrollTo(0, keepScroll);
+        } else {
+          const requested = (location.hash || '').replace('#','').trim().toLowerCase();
+          activate(requested || 'entresemana');
+        }
       };
       script.onerror = function() { cleanup(); showApiError('Error al cargar el API.','La URL respondió con error.'); };
       document.body.appendChild(script);
@@ -297,19 +374,61 @@
       initWeekend(data.findesemana || { hasData:false, weeks:[] });
     }
 
-    function renderItemList(items, cls, lector='') {
-      return (items || []).map(it => `<div class="item"><div class="item-title ${cls}">${it.number ? esc(it.number)+'. ' : ''}${esc(it.title || '')}</div>${it.names ? `<div class="item-person">${esc(it.names)}</div>` : ''}${it.isCongBibleStudy && lector ? `<div class="lector-below">Lector:<span class="lector-name"> ${esc(lector)}</span></div>` : ''}</div>`).join('');
+    /* ===== Helpers de edición ===== */
+    function cellVal(week, row, field) { const c = week && week.cells && week.cells[row]; return c ? String(c[field] ?? '') : ''; }
+    // Casilla editable ligada a una celda de la hoja (fila + campo: d=discursante, a=ayudante, n=cántico)
+    function ed(week, meeting, row, field, opts = {}) {
+      if (!row) return '';
+      const key = row + '|' + field;
+      const orig = cellVal(week, row, field);
+      const pending = edits[key];
+      const cur = pending ? pending.value : orig;
+      if (opts.multiline) {
+        return `<textarea class="ed ed-multi ${opts.cls || ''} ${pending ? 'changed' : ''}" rows="1" data-key="${key}" data-row="${row}" data-field="${field}" data-orig="${esc(orig)}" data-week="${esc(week.weekKey)}" data-meeting="${meeting}" placeholder="${esc(opts.ph || '—')}" autocomplete="off" spellcheck="false">${esc(cur)}</textarea>`;
+      }
+      return `<input class="ed ${opts.cls || ''} ${pending ? 'changed' : ''}" type="text" data-key="${key}" data-row="${row}" data-field="${field}" data-orig="${esc(orig)}" data-week="${esc(week.weekKey)}" data-meeting="${meeting}" value="${esc(cur)}" placeholder="${esc(opts.ph || '—')}" ${field === 'n' ? 'inputmode="numeric"' : ''} autocomplete="off" spellcheck="false">`;
+    }
+    // El textarea del título crece según el texto (el título del discurso suele ocupar 2-3 líneas)
+    function autosize(el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; }
+    function edPair(week, meeting, row, ph1 = 'Nombre', ph2 = 'Nombre', cls = '') {
+      if (!row) return '';
+      return `<span class="ed-pair ${cls}">${ed(week, meeting, row, 'd', { ph: ph1 })}<span class="ed-sep">/</span>${ed(week, meeting, row, 'a', { ph: ph2 })}</span>`;
+    }
+
+    function renderItemList(items, cls, lector = '', week = null, opts = {}) {
+      return (items || []).map(it => {
+        let names = '';
+        if (ADMIN && week && it.row) {
+          const showHelper = opts.helper || cellVal(week, it.row, 'a');
+          names = `<div class="item-person ed-pair">${ed(week, 'entresemana', it.row, 'd', { ph: 'Discursante' })}${showHelper ? `<span class="ed-sep">/</span>${ed(week, 'entresemana', it.row, 'a', { ph: 'Ayudante' })}` : ''}</div>`;
+        } else if (it.names) {
+          names = `<div class="item-person">${esc(it.names)}</div>`;
+        }
+        let lec = '';
+        if (it.isCongBibleStudy) {
+          if (ADMIN && week && week.refs && week.refs.lector) lec = `<div class="lector-below">Lector:<span class="lector-name"> ${ed(week, 'entresemana', week.refs.lector, 'd', { ph: 'Lector' })}</span></div>`;
+          else if (lector) lec = `<div class="lector-below">Lector:<span class="lector-name"> ${esc(lector)}</span></div>`;
+        }
+        return `<div class="item"><div class="item-title ${cls}">${it.number ? esc(it.number)+'. ' : ''}${esc(it.title || '')}</div>${names}${lec}</div>`;
+      }).join('');
     }
     function renderAssemblyBlock(name, theme) {
       return `<div class="assembly-wrap"><div class="assembly-badge">NO HAY REUNIÓN — ASAMBLEA</div>${name ? `<div class="assembly-name">${esc(name)}</div>` : ''}${theme ? `<div class="assembly-theme">“${esc(theme)}”</div>` : ''}</div>`;
     }
+    function indexForKey(weeks, key) { return key ? weeks.findIndex(w => String(w.weekKey) === String(key)) : -1; }
 
+    /* ===== Vida y Ministerio ===== */
     function initMidweek(data) {
       if (!data || !data.hasData || !Array.isArray(data.weeks) || !data.weeks.length) { views.entresemana.innerHTML = '<div class="empty-state">No hay datos cargados para <strong>Vida y Ministerio</strong>.</div>'; return; }
-      midweekWeeks = data.weeks.slice(); midweekIndex = resolveWeekIndex(midweekWeeks, data.currentWeekKey); paintCurrentMidweekWeek();
+      midweekWeeks = data.weeks.slice();
+      const kept = indexForKey(midweekWeeks, preferKeys && preferKeys.entresemana);
+      midweekIndex = kept >= 0 ? kept : resolveWeekIndex(midweekWeeks, data.currentWeekKey);
+      paintCurrentMidweekWeek();
     }
     function paintCurrentMidweekWeek() {
       const d = midweekWeeks[midweekIndex]; if (!d) return;
+      const R = d.refs || {};
+      const M = 'entresemana';
       const navHtml = `<div class="head"><div class="head-nav"><button class="nav-arrow" id="mw-prev" ${midweekIndex === 0 ? 'disabled' : ''}>◀</button><div class="head-title">${esc(d.weekTitle || '')}</div><button class="nav-arrow" id="mw-next" ${midweekIndex === midweekWeeks.length - 1 ? 'disabled' : ''}>▶</button></div></div>`;
       const looksLikeAssembly = normText(d.president || '').includes('asamblea');
       if (d.isAssembly || looksLikeAssembly) {
@@ -317,18 +436,27 @@
         const theme = d.assemblyTheme || '';
         views.entresemana.innerHTML = `<div class="card">${navHtml}${renderAssemblyBlock(name, theme)}</div>`;
       } else {
-        views.entresemana.innerHTML = `<div class="card">${navHtml}${d.president ? `<div class="sub">Presidente: ${esc(d.president)}</div>` : ''}<div class="block"><div class="section-title s-blue">TESOROS DE LA BIBLIA ${d.openingSong ? `<span class="song">Canción ${esc(d.openingSong)}</span>` : ''}</div>${renderItemList(d.treasures, 'blue-t')}<div class="section-title s-gold">SEAMOS MEJORES MAESTROS</div>${renderItemList(d.teachers, 'gold-t')}<div class="section-title s-red">NUESTRA VIDA CRISTIANA ${d.middleSong ? `<span class="song">Canción ${esc(d.middleSong)}</span>` : ''}</div>${renderItemList(d.life, 'red-t', d.lector || '')}</div>${d.closingSong ? `<div class="footer-note">Palabras de conclusión y canción ${esc(d.closingSong)}</div>` : ''}${d.prayerName ? `<div class="footer-prayer">Oración conclusión&nbsp;&nbsp;${esc(d.prayerName)}</div>` : ''}${d.cleaningLabel ? `<div class="cleaning">${esc(d.cleaningLabel)}</div>` : ''}</div>`;
+        const A = ADMIN;
+        const presidentHtml = A ? (R.president ? `<div class="sub">Presidente: ${ed(d, M, R.president, 'd', { ph: 'Presidente' })}</div>` : '') : (d.president ? `<div class="sub">Presidente: ${esc(d.president)}</div>` : '');
+        const prayerHtml = A ? (R.prayer ? `<div class="footer-prayer">Oración conclusión&nbsp;&nbsp;${ed(d, M, R.prayer, 'd', { ph: 'Hermano' })}</div>` : '') : (d.prayerName ? `<div class="footer-prayer">Oración conclusión&nbsp;&nbsp;${esc(d.prayerName)}</div>` : '');
+        const cleaningHtml = A ? (R.cleaning ? `<div class="cleaning">${esc(d.cleaningTask || 'Limpieza')} ${ed(d, M, R.cleaning, 'd', { cls: 'ed-cleaning', ph: 'Grupo' })}</div>` : '') : (d.cleaningLabel ? `<div class="cleaning">${esc(d.cleaningLabel)}</div>` : '');
+        views.entresemana.innerHTML = `<div class="card">${navHtml}${presidentHtml}<div class="block"><div class="section-title s-blue">TESOROS DE LA BIBLIA ${d.openingSong ? `<span class="song">Canción ${esc(d.openingSong)}</span>` : ''}</div>${renderItemList(d.treasures, 'blue-t', '', d)}<div class="section-title s-gold">SEAMOS MEJORES MAESTROS</div>${renderItemList(d.teachers, 'gold-t', '', d, { helper: true })}<div class="section-title s-red">NUESTRA VIDA CRISTIANA ${d.middleSong ? `<span class="song">Canción ${esc(d.middleSong)}</span>` : ''}</div>${renderItemList(d.life, 'red-t', d.lector || '', d)}</div>${d.closingSong ? `<div class="footer-note">Palabras de conclusión y canción ${esc(d.closingSong)}</div>` : ''}${prayerHtml}${cleaningHtml}</div>`;
       }
       const prev = document.getElementById('mw-prev'), next = document.getElementById('mw-next');
-      if (prev) prev.onclick = () => { if (midweekIndex > 0) { midweekIndex--; paintCurrentMidweekWeek(); } };
-      if (next) next.onclick = () => { if (midweekIndex < midweekWeeks.length - 1) { midweekIndex++; paintCurrentMidweekWeek(); } };
+      if (prev) prev.onclick = () => { if (midweekIndex > 0 && confirmLeaveWeek(M, d.weekKey)) { midweekIndex--; paintCurrentMidweekWeek(); } };
+      if (next) next.onclick = () => { if (midweekIndex < midweekWeeks.length - 1 && confirmLeaveWeek(M, d.weekKey)) { midweekIndex++; paintCurrentMidweekWeek(); } };
     }
 
+    /* ===== Conferencia y Atalaya ===== */
     function initWeekend(data) {
       if (!data || !data.hasData || !Array.isArray(data.weeks) || !data.weeks.length) { views.findesemana.innerHTML = '<div class="empty-state">No hay datos cargados para <strong>Conferencia y Atalaya</strong>.</div>'; return; }
-      weekendWeeks = data.weeks.slice(); weekendIndex = resolveWeekIndex(weekendWeeks, data.currentWeekKey); paintCurrentWeekendWeek();
+      weekendWeeks = data.weeks.slice();
+      const kept = indexForKey(weekendWeeks, preferKeys && preferKeys.findesemana);
+      weekendIndex = kept >= 0 ? kept : resolveWeekIndex(weekendWeeks, data.currentWeekKey);
+      paintCurrentWeekendWeek();
     }
     function supportLine(label, value) { return value ? `<div>${label}:<span>${esc(value)}</span></div>` : ''; }
+    function supportLineAdmin(d, label, row) { return row ? `<div>${label}:${edPair(d, 'findesemana', row)}</div>` : ''; }
     function paintCurrentWeekendWeek() {
       const d = weekendWeeks[weekendIndex]; if (!d) return;
       const navHtml = `<div class="wk-date"><div class="wk-date-nav"><button class="nav-arrow" id="wk-prev" ${weekendIndex === 0 ? 'disabled' : ''}>◀</button><div class="wk-date-title">${esc(d.headerTitle || '')}</div><button class="nav-arrow" id="wk-next" ${weekendIndex === weekendWeeks.length - 1 ? 'disabled' : ''}>▶</button></div></div>`;
@@ -337,15 +465,192 @@
         const name = d.assemblyName || d.president || '';
         const theme = d.assemblyTheme || '';
         views.findesemana.innerHTML = `<div class="wk-wrap"><div class="wk-card">${navHtml}<div class="wk-body">${renderAssemblyBlock(name, theme)}</div></div></div>`;
+      } else if (ADMIN) {
+        views.findesemana.innerHTML = `<div class="wk-wrap"><div class="wk-card">${navHtml}<div class="wk-body">${renderWeekendAdminBody(d)}</div></div></div>`;
+        requestAnimationFrame(() => views.findesemana.querySelectorAll('textarea.ed').forEach(autosize));
       } else {
         views.findesemana.innerHTML = `<div class="wk-wrap"><div class="wk-card">${navHtml}<div class="wk-body">${d.president ? `<div class="wk-president">PRESIDENTE: <span class="name">${esc(d.president)}</span></div>` : ''}${d.publicTalk ? `<div class="wk-band wk-green-band"><div class="wk-band-left"><div class="wk-band-title">DISCURSO PÚBLICO</div></div>${d.publicTalk.song ? `<div class="wk-band-song">Canción ${esc(d.publicTalk.song)}</div>` : ''}</div><div class="wk-main-title">“${esc(d.publicTalk.title || '')}”</div>${d.publicTalk.speaker ? `<div class="wk-main-speaker">${esc(d.publicTalk.speaker)}</div>` : ''}${d.publicTalk.subtitle ? `<div class="wk-main-sub">${esc(d.publicTalk.subtitle)}</div>` : ''}` : ''}${d.watchtower ? `<div class="wk-band wk-red-band"><div class="wk-band-left"><div class="wk-band-title">REUNIÓN LA ATALAYA</div></div>${d.watchtower.song ? `<div class="wk-band-song">Canción ${esc(d.watchtower.song)}</div>` : ''}</div><div class="wk-watch-title">“${esc(d.watchtower.title || '')}”</div>${d.watchtower.conductor ? `<div class="wk-watch-conductor">${esc(d.watchtower.conductor)}</div>` : ''}${d.watchtower.lector ? `<div class="wk-watch-lector">Lector: ${esc(d.watchtower.lector)}</div>` : ''}` : ''}${d.closingSong ? `<div class="wk-foot-song">Canción ${esc(d.closingSong)}</div>` : ''}${d.cleaningLabel ? `<div class="wk-cleaning">${esc(d.cleaningLabel)}</div>` : ''}<div class="wk-support">${supportLine('Acomodadores', d.support && d.support.acomodadores)}${supportLine('Micrófonos', d.support && d.support.microfonos)}${supportLine('Hospitalidad', d.support && d.support.hospitalidad)}</div></div></div></div>`;
       }
       const prev = document.getElementById('wk-prev'), next = document.getElementById('wk-next');
-      if (prev) prev.onclick = () => { if (weekendIndex > 0) { weekendIndex--; paintCurrentWeekendWeek(); } };
-      if (next) next.onclick = () => { if (weekendIndex < weekendWeeks.length - 1) { weekendIndex++; paintCurrentWeekendWeek(); } };
+      if (prev) prev.onclick = () => { if (weekendIndex > 0 && confirmLeaveWeek('findesemana', d.weekKey)) { weekendIndex--; paintCurrentWeekendWeek(); } };
+      if (next) next.onclick = () => { if (weekendIndex < weekendWeeks.length - 1 && confirmLeaveWeek('findesemana', d.weekKey)) { weekendIndex++; paintCurrentWeekendWeek(); } };
+    }
+    function renderWeekendAdminBody(d) {
+      const R = d.refs || {}, M = 'findesemana';
+      const song = row => row ? `<div class="wk-band-song">Canción ${ed(d, M, row, 'n', { cls: 'ed-song', ph: '#' })}</div>` : '';
+      let h = '';
+      if (R.president) h += `<div class="wk-president">PRESIDENTE: <span class="name">${ed(d, M, R.president, 'd', { ph: 'Presidente' })}</span></div>`;
+      if (d.publicTalk) {
+        h += `<div class="wk-band wk-green-band"><div class="wk-band-left"><div class="wk-band-title">DISCURSO PÚBLICO</div></div>${song(R.openingSong)}</div>`;
+        h += R.publicTalk
+          ? `<div class="wk-main-title">${ed(d, M, R.publicTalk, 't', { cls: 'ed-block', ph: 'Título del discurso', multiline: true })}</div>`
+          : `<div class="wk-main-title">“${esc(d.publicTalk.title || '')}”</div>`;
+        if (R.publicTalk) {
+          h += `<div class="wk-main-speaker">${ed(d, M, R.publicTalk, 'd', { cls: 'ed-block', ph: 'Discursante' })}</div>`;
+          h += `<div class="wk-main-sub">${ed(d, M, R.publicTalk, 'a', { cls: 'ed-block', ph: 'Congregación' })}</div>`;
+        }
+      }
+      if (d.watchtower) {
+        h += `<div class="wk-band wk-red-band"><div class="wk-band-left"><div class="wk-band-title">REUNIÓN LA ATALAYA</div></div>${song(R.middleSong)}</div>`;
+        h += `<div class="wk-watch-title">“${esc(d.watchtower.title || '')}”</div>`;
+        if (R.watchtower) h += `<div class="wk-watch-conductor">${ed(d, M, R.watchtower, 'd', { cls: 'ed-block', ph: 'Conductor' })}</div>`;
+        if (R.lector) h += `<div class="wk-watch-lector">Lector: ${edPair(d, M, R.lector, 'Lector', 'Lector 2')}</div>`;
+      }
+      if (R.closingSong) h += `<div class="wk-foot-song">Canción ${ed(d, M, R.closingSong, 'n', { cls: 'ed-song', ph: '#' })}</div>`;
+      if (R.cleaning) h += `<div class="wk-cleaning">${esc(d.cleaningTask || 'Limpieza')} ${ed(d, M, R.cleaning, 'd', { cls: 'ed-cleaning', ph: 'Grupo' })}</div>`;
+      h += `<div class="wk-support">${supportLineAdmin(d, 'Acomodadores', R.acomodadores)}${supportLineAdmin(d, 'Micrófonos', R.microfonos)}${supportLineAdmin(d, 'Hospitalidad', R.hospitalidad)}</div>`;
+      return h;
     }
 
-    loadData();
+    /* ===== Modo edición ===== */
+    function pendingFor(meeting, weekKey) { return Object.keys(edits).filter(k => edits[k].meeting === meeting && String(edits[k].weekKey) === String(weekKey)); }
+    function confirmLeaveWeek(meeting, weekKey) {
+      if (!ADMIN) return true;
+      const keys = pendingFor(meeting, weekKey);
+      if (!keys.length) return true;
+      const ok = confirm(`Tienes ${keys.length} cambio(s) sin publicar en esta semana.\n\nSi cambias de semana se descartarán. ¿Continuar sin publicar?`);
+      if (ok) { keys.forEach(k => delete edits[k]); updateAdminBar(); }
+      return ok;
+    }
+    function updateAdminBar() {
+      if (!ADMIN) return;
+      const n = Object.keys(edits).length;
+      const meetings = new Set(Object.values(edits).map(e => e.meeting));
+      const where = [meetings.has('entresemana') ? 'Vida y Ministerio' : '', meetings.has('findesemana') ? 'Conferencia y Atalaya' : ''].filter(Boolean).join(' y ');
+      document.getElementById('admin-count').innerHTML = n ? `${n} cambio${n === 1 ? '' : 's'} sin publicar<small>${esc(where)}</small>` : 'Sin cambios<small>Toca un nombre para editarlo</small>';
+      document.getElementById('btn-publish').disabled = !n;
+      document.getElementById('btn-discard').disabled = !n;
+    }
+    function toast(msg, isError = false) {
+      const t = document.createElement('div');
+      t.className = 'toast' + (isError ? ' error' : '');
+      t.textContent = msg;
+      document.body.appendChild(t);
+      setTimeout(() => t.remove(), isError ? 6000 : 3000);
+    }
+    async function apiPost(body) {
+      const res = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body) });
+      return res.json();
+    }
+    function storePw(pw) { try { pw ? sessionStorage.setItem('fvAdminPw', pw) : sessionStorage.removeItem('fvAdminPw'); } catch (e) {} }
+    function readPw() { try { return sessionStorage.getItem('fvAdminPw') || ''; } catch (e) { return ''; } }
+
+    function showLogin(message = '') {
+      document.getElementById('loading').classList.add('hidden');
+      document.getElementById('admin-login').classList.remove('hidden');
+      document.getElementById('login-error').textContent = message;
+      setTimeout(() => document.getElementById('login-pw').focus(), 50);
+    }
+    function enterAdmin() {
+      document.getElementById('admin-login').classList.add('hidden');
+      document.getElementById('admin-top').classList.remove('hidden');
+      document.getElementById('admin-bar').classList.remove('hidden');
+      document.body.classList.add('is-admin');
+      updateAdminBar();
+      loadData();
+    }
+    async function startAdmin() {
+      document.title = 'Editar roles';
+      const saved = readPw();
+      if (!saved) { showLogin(); return; }
+      try {
+        const r = await apiPost({ action: 'login', password: saved });
+        if (r && r.ok) { adminPassword = saved; enterAdmin(); } else { storePw(''); showLogin(); }
+      } catch (e) { showLogin('No se pudo conectar con el servidor.'); }
+    }
+
+    if (ADMIN) {
+      document.getElementById('login-form').addEventListener('submit', async ev => {
+        ev.preventDefault();
+        const pw = document.getElementById('login-pw').value.trim();
+        if (!pw) return;
+        const btn = document.getElementById('login-btn');
+        btn.disabled = true; btn.textContent = 'Verificando…';
+        document.getElementById('login-error').textContent = '';
+        try {
+          const r = await apiPost({ action: 'login', password: pw });
+          if (r && r.ok) { adminPassword = pw; storePw(pw); enterAdmin(); }
+          else document.getElementById('login-error').textContent = 'Contraseña incorrecta.';
+        } catch (e) {
+          document.getElementById('login-error').textContent = 'No se pudo conectar. Verifica que el Apps Script esté actualizado.';
+        }
+        btn.disabled = false; btn.textContent = 'Ingresar';
+      });
+
+      // Registrar cambios mientras se escribe
+      document.addEventListener('input', ev => {
+        const el = ev.target;
+        if (!el.classList || !el.classList.contains('ed')) return;
+        const key = el.dataset.key;
+        const value = el.value.trim();
+        if (value === String(el.dataset.orig || '').trim()) delete edits[key];
+        else edits[key] = { row: +el.dataset.row, field: el.dataset.field, value, weekKey: el.dataset.week, meeting: el.dataset.meeting };
+        el.classList.toggle('changed', !!edits[key]);
+        if (el.tagName === 'TEXTAREA') autosize(el);
+        updateAdminBar();
+      });
+      // Enter pasa a la siguiente casilla
+      document.addEventListener('keydown', ev => {
+        const el = ev.target;
+        if (ev.key !== 'Enter' || !el.classList || !el.classList.contains('ed')) return;
+        ev.preventDefault();
+        const all = Array.from(views[currentTab].querySelectorAll('.ed'));
+        const next = all[all.indexOf(el) + 1];
+        if (next) { next.focus(); next.select(); } else el.blur();
+      });
+      document.addEventListener('focusin', ev => { if (ev.target.classList && ev.target.classList.contains('ed')) ev.target.select(); });
+
+      document.getElementById('btn-discard').addEventListener('click', () => {
+        if (!Object.keys(edits).length || !confirm('¿Descartar todos los cambios sin publicar?')) return;
+        edits = {}; paintCurrentMidweekWeek(); paintCurrentWeekendWeek(); updateAdminBar();
+      });
+
+      document.getElementById('btn-publish').addEventListener('click', async () => {
+        const changes = Object.values(edits);
+        if (!changes.length) return;
+        const btn = document.getElementById('btn-publish');
+        btn.disabled = true; btn.textContent = 'Publicando…';
+        document.getElementById('btn-discard').disabled = true;
+        try {
+          const r = await apiPost({ action: 'save', password: adminPassword, changes });
+          if (r && r.ok) {
+            edits = {};
+            preferKeys = {
+              entresemana: midweekWeeks[midweekIndex] && midweekWeeks[midweekIndex].weekKey,
+              findesemana: weekendWeeks[weekendIndex] && weekendWeeks[weekendIndex].weekKey
+            };
+            toast(`✓ Publicado (${r.updated} cambio${r.updated === 1 ? '' : 's'})`);
+            loadData(true);
+          } else if (r && r.auth === false) {
+            storePw(''); adminPassword = '';
+            toast('La contraseña ya no es válida. Ingresa de nuevo.', true);
+            showLogin();
+          } else {
+            toast((r && r.error) || 'No se pudo publicar.', true);
+          }
+        } catch (e) {
+          toast('Error de conexión. Tus cambios siguen aquí; intenta de nuevo.', true);
+        }
+        btn.textContent = 'PUBLICAR';
+        updateAdminBar();
+      });
+
+      document.getElementById('admin-exit').addEventListener('click', () => {
+        if (Object.keys(edits).length && !confirm('Tienes cambios sin publicar. ¿Salir de todos modos?')) return;
+        edits = {}; storePw('');
+        location.replace(location.pathname + location.search + '#findesemana');
+      });
+
+      window.addEventListener('beforeunload', ev => { if (Object.keys(edits).length) { ev.preventDefault(); ev.returnValue = ''; } });
+    }
+
+    // Entrar o salir de #admin recarga la página en el modo correcto
+    window.addEventListener('hashchange', () => {
+      const wantsAdmin = (location.hash || '').toLowerCase() === '#admin';
+      if (wantsAdmin !== ADMIN) location.reload();
+    });
+
+    if (ADMIN) startAdmin(); else loadData();
   </script>
 </body>
 </html>
